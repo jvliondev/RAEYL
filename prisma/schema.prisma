@@ -1,0 +1,895 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  ARCHIVED
+}
+
+enum UserType {
+  STANDARD
+  PARTNER
+  ADMIN
+}
+
+enum WalletStatus {
+  DRAFT
+  IN_SETUP
+  READY_FOR_HANDOFF
+  ACTIVE
+  ATTENTION
+  ARCHIVED
+  SUSPENDED
+}
+
+enum HandoffStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  OWNER_INVITED
+  OWNER_ACCEPTED
+  COMPLETED
+  REOPENED
+  CANCELED
+}
+
+enum OwnerAcceptanceStatus {
+  NOT_INVITED
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+enum SetupStatus {
+  NOT_STARTED
+  PROFILE_COMPLETE
+  WEBSITES_ADDED
+  PROVIDERS_ADDED
+  ROUTES_ADDED
+  READY
+}
+
+enum WalletRole {
+  PLATFORM_ADMIN
+  WALLET_OWNER
+  DEVELOPER
+  EDITOR
+  VIEWER
+  BILLING_MANAGER
+  SUPPORT
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PENDING
+  REVOKED
+  SUSPENDED
+}
+
+enum WebsiteStatus {
+  DRAFT
+  LIVE
+  STAGING_ONLY
+  MAINTENANCE
+  ARCHIVED
+  REPLATFORMING
+}
+
+enum ProviderCategory {
+  HOSTING
+  DATABASE
+  CMS
+  DOMAIN
+  EMAIL_FORMS
+  ANALYTICS
+  PAYMENTS
+  SCHEDULING
+  AUTOMATION
+  SUPPORT
+  STORAGE
+  AUTH_IDENTITY
+  CUSTOM
+}
+
+enum ProviderConnectionMethod {
+  OAUTH
+  API_TOKEN
+  MANUAL
+  SECURE_LINK
+}
+
+enum ProviderStatus {
+  NOT_CONNECTED
+  CONNECTED
+  PENDING_VERIFICATION
+  REQUIRES_RECONNECT
+  DISCONNECTED
+  ARCHIVED
+}
+
+enum HealthStatus {
+  HEALTHY
+  ATTENTION_NEEDED
+  ISSUE_DETECTED
+  DISCONNECTED
+  UNKNOWN
+}
+
+enum SyncState {
+  NEVER_SYNCED
+  SYNCED
+  PENDING
+  FAILED
+  DISABLED
+}
+
+enum SecretType {
+  ACCESS_TOKEN
+  REFRESH_TOKEN
+  API_KEY
+  WEBHOOK_SECRET
+  PASSWORD_HASH
+  CLIENT_SECRET
+  SECURE_LINK_CREDENTIAL
+}
+
+enum SecretStatus {
+  ACTIVE
+  ROTATED
+  REVOKED
+  EXPIRED
+}
+
+enum InviteType {
+  WALLET_MEMBER
+  OWNER_HANDOFF
+  PARTNER
+}
+
+enum InviteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  REVOKED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  DISMISSED
+  RESOLVED
+  SNOOZED
+}
+
+enum AlertCategory {
+  PROVIDER_DISCONNECTED
+  RENEWAL_EXPIRING
+  MISSING_EDIT_ROUTE
+  BILLING_SYNC_FAILED
+  HANDOFF_PENDING
+  WALLET_INCOMPLETE
+  DOMAIN_ISSUE
+  HOSTING_ISSUE
+  CMS_ISSUE
+  MANUAL
+}
+
+enum BillingSourceType {
+  RAEYL_SUBSCRIPTION
+  PROVIDER_COST
+  MANUAL_ADJUSTMENT
+}
+
+enum BillingCadence {
+  MONTHLY
+  ANNUAL
+  QUARTERLY
+  ONE_TIME
+  USAGE_BASED
+}
+
+enum BillingStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+  PAUSED
+}
+
+enum SubscriptionProvider {
+  STRIPE
+  MANUAL
+}
+
+enum SupportPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CUSTOMER
+  WAITING_ON_PROVIDER
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+  ARCHIVED
+}
+
+enum NotificationType {
+  INVITE
+  HANDOFF
+  ALERT
+  BILLING
+  SUPPORT
+  SYSTEM
+}
+
+enum AuditActorType {
+  USER
+  SYSTEM
+  ADMIN
+  PARTNER
+}
+
+enum AuditEntityType {
+  USER
+  WALLET
+  MEMBERSHIP
+  WEBSITE
+  PROVIDER
+  SECRET
+  BILLING
+  SUBSCRIPTION
+  INVITE
+  HANDOFF
+  ALERT
+  SUPPORT
+  REFERRAL
+  PAYOUT
+  NOTIFICATION
+  SETTING
+}
+
+enum PartnerStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  DISPUTED
+  ARCHIVED
+}
+
+enum ReferralStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  PAUSED
+  EXPIRED
+  DISPUTED
+}
+
+enum PayoutStatus {
+  PENDING
+  READY
+  PAID
+  FAILED
+  CANCELED
+}
+
+enum SettingScope {
+  USER
+  WALLET
+  PLATFORM
+}
+
+enum CredentialEnvironment {
+  PRODUCTION
+  STAGING
+  DEVELOPMENT
+  SHARED
+}
+
+model User {
+  id                    String                    @id @default(cuid())
+  email                 String                    @unique
+  emailVerified         DateTime?
+  passwordHash          String?
+  name                  String?
+  image                 String?
+  phone                 String?
+  status                UserStatus                @default(ACTIVE)
+  type                  UserType                  @default(STANDARD)
+  isMfaEnrolled         Boolean                   @default(false)
+  lastLoginAt           DateTime?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  accounts              Account[]
+  sessions              Session[]
+  memberships           WalletMembership[]
+  sentInvites           Invite[]                  @relation("InviteSender")
+  acceptedInvites       Invite[]                  @relation("InviteAccepter")
+  notifications         Notification[]
+  notificationPrefs     NotificationPreference[]
+  userSettings          Setting[]                 @relation("UserSettings")
+  supportRequests       SupportRequest[]          @relation("SupportRequester")
+  supportMessages       SupportMessage[]          @relation("SupportMessageAuthor")
+  auditLogs             AuditLog[]                @relation("AuditActor")
+  createdWallets        Wallet[]                  @relation("WalletCreator")
+  ownerWallets          Wallet[]                  @relation("WalletPrimaryOwner")
+  developerWallets      Wallet[]                  @relation("WalletPrimaryDeveloper")
+  handoffRecords        HandoffRecord[]           @relation("HandoffCompletedBy")
+  partnerAccount        PartnerAccount?
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?
+  session_state      String?
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  sessionToken  String   @unique
+  userId        String
+  expires       DateTime
+  ipAddress     String?
+  userAgent     String?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Wallet {
+  id                     String              @id @default(cuid())
+  slug                   String              @unique
+  name                   String
+  businessName           String
+  ownerContactName       String?
+  ownerEmail             String?
+  ownerPhone             String?
+  businessCategory       String?
+  websiteName            String?
+  websiteUrl             String?
+  websiteDescription     String?
+  timezone               String?
+  notes                  String?
+  supportPreferences     Json?
+  status                 WalletStatus        @default(DRAFT)
+  handoffStatus          HandoffStatus       @default(NOT_STARTED)
+  ownerAcceptanceStatus  OwnerAcceptanceStatus @default(NOT_INVITED)
+  setupStatus            SetupStatus         @default(NOT_STARTED)
+  planTier               String?
+  createdById            String?
+  primaryDeveloperId     String?
+  primaryOwnerId         String?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  archivedAt             DateTime?
+  createdBy              User?               @relation("WalletCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  primaryDeveloper       User?               @relation("WalletPrimaryDeveloper", fields: [primaryDeveloperId], references: [id], onDelete: SetNull)
+  primaryOwner           User?               @relation("WalletPrimaryOwner", fields: [primaryOwnerId], references: [id], onDelete: SetNull)
+  memberships            WalletMembership[]
+  websites               Website[]
+  editRoutes             EditRoute[]
+  providers              ProviderConnection[]
+  billingRecords         BillingRecord[]
+  subscriptions          WalletSubscription[]
+  alerts                 Alert[]
+  invites                Invite[]
+  handoffRecords         HandoffRecord[]
+  supportRequests        SupportRequest[]
+  referrals              Referral[]
+  notifications          Notification[]
+  settings               Setting[]           @relation("WalletSettings")
+  auditLogs              AuditLog[]
+
+  @@index([status, updatedAt])
+  @@index([primaryOwnerId])
+  @@index([primaryDeveloperId])
+  @@index([createdById])
+}
+
+model WalletMembership {
+  id                 String            @id @default(cuid())
+  walletId           String
+  userId             String
+  role               WalletRole
+  status             MembershipStatus  @default(PENDING)
+  isPrimaryOwner     Boolean           @default(false)
+  isPrimaryDeveloper Boolean           @default(false)
+  permissions        Json?
+  invitedById        String?
+  inviteId           String?
+  joinedAt           DateTime?
+  revokedAt          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  wallet             Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invite             Invite?          @relation(fields: [inviteId], references: [id], onDelete: SetNull)
+
+  @@unique([walletId, userId])
+  @@index([walletId, role])
+  @@index([userId, status])
+  @@index([inviteId])
+}
+
+model Website {
+  id                String         @id @default(cuid())
+  walletId          String
+  name              String
+  primaryDomain     String?
+  productionUrl     String?
+  stagingUrl        String?
+  siteCategory      String?
+  framework         String?
+  deploymentNotes   String?
+  primaryEditRouteId String?
+  status            WebsiteStatus  @default(DRAFT)
+  launchDate        DateTime?
+  ownerNotes        String?
+  developerNotes    String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  wallet            Wallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  providers         ProviderConnection[]
+  editRoutes        EditRoute[]
+
+  @@unique([walletId, name])
+  @@index([walletId, status])
+  @@index([walletId, primaryDomain])
+}
+
+model EditRoute {
+  id                String     @id @default(cuid())
+  walletId          String
+  websiteId         String
+  providerId        String?
+  label             String
+  description       String?
+  destinationUrl    String
+  contentKey        String?
+  isPrimary         Boolean    @default(false)
+  visibleToRoles    WalletRole[]
+  sortOrder         Int        @default(0)
+  isEnabled         Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  wallet            Wallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  website           Website    @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  provider          ProviderConnection? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, websiteId])
+  @@index([providerId])
+  @@index([websiteId, isPrimary])
+}
+
+model ProviderTemplate {
+  id                  String             @id @default(cuid())
+  slug                String             @unique
+  displayName         String
+  category            ProviderCategory
+  defaultDescription  String?
+  defaultOwnerLabel   String?
+  connectionMethods   ProviderConnectionMethod[]
+  configSchema        Json?
+  metadataSchema      Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  providers           ProviderConnection[]
+}
+
+model ProviderConnection {
+  id                    String                    @id @default(cuid())
+  walletId              String
+  websiteId             String?
+  providerTemplateId    String?
+  providerName          String
+  displayLabel          String?
+  category              ProviderCategory
+  status                ProviderStatus            @default(NOT_CONNECTED)
+  healthStatus          HealthStatus              @default(UNKNOWN)
+  syncState             SyncState                 @default(NEVER_SYNCED)
+  connectedAccountLabel String?
+  externalProjectId     String?
+  externalTeamId        String?
+  dashboardUrl          String?
+  billingUrl            String?
+  editUrl               String?
+  supportUrl            String?
+  ownerDescription      String?
+  connectionMethod      ProviderConnectionMethod
+  tokenMetadata         Json?
+  metadata              Json?
+  notes                 String?
+  monthlyCostEstimate   Decimal?                  @db.Decimal(10, 2)
+  renewalDate           DateTime?
+  lastSyncAt            DateTime?
+  lastHealthCheckAt     DateTime?
+  createdById           String?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  wallet                Wallet                    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  website               Website?                  @relation(fields: [websiteId], references: [id], onDelete: SetNull)
+  providerTemplate      ProviderTemplate?         @relation(fields: [providerTemplateId], references: [id], onDelete: SetNull)
+  secrets               ProviderSecret[]
+  editRoutes            EditRoute[]
+  billingRecords        BillingRecord[]
+  alerts                Alert[]
+  supportRequests       SupportRequest[]
+
+  @@index([walletId, category])
+  @@index([walletId, status])
+  @@index([websiteId])
+  @@index([providerTemplateId])
+}
+
+model ProviderSecret {
+  id                   String                 @id @default(cuid())
+  providerConnectionId String
+  secretType           SecretType
+  environment          CredentialEnvironment  @default(PRODUCTION)
+  encryptedValue       String
+  keyVersion           Int
+  valueFingerprint     String?
+  maskedPreview        String?
+  scopes               String[]
+  status               SecretStatus           @default(ACTIVE)
+  expiresAt            DateTime?
+  rotatedAt            DateTime?
+  createdById          String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  providerConnection   ProviderConnection     @relation(fields: [providerConnectionId], references: [id], onDelete: Cascade)
+
+  @@index([providerConnectionId, secretType])
+  @@index([status, expiresAt])
+}
+
+model Invite {
+  id                  String           @id @default(cuid())
+  walletId            String?
+  sentById            String?
+  acceptedById        String?
+  email               String
+  role                WalletRole?
+  inviteType          InviteType       @default(WALLET_MEMBER)
+  status              InviteStatus     @default(DRAFT)
+  tokenHash           String           @unique
+  expiresAt           DateTime
+  sentAt              DateTime?
+  viewedAt            DateTime?
+  acceptedAt          DateTime?
+  revokedAt           DateTime?
+  context             Json?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  wallet              Wallet?          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  sender              User?            @relation("InviteSender", fields: [sentById], references: [id], onDelete: SetNull)
+  accepter            User?            @relation("InviteAccepter", fields: [acceptedById], references: [id], onDelete: SetNull)
+  memberships         WalletMembership[]
+
+  @@index([walletId, status])
+  @@index([email, status])
+  @@index([expiresAt])
+}
+
+model HandoffRecord {
+  id                   String        @id @default(cuid())
+  walletId             String
+  ownerInviteId        String?
+  startedById          String?
+  completedById        String?
+  status               HandoffStatus @default(NOT_STARTED)
+  checklist            Json?
+  summary              String?
+  startedAt            DateTime?
+  ownerAcceptedAt      DateTime?
+  completedAt          DateTime?
+  reopenedAt           DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  wallet               Wallet        @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  completedBy          User?         @relation("HandoffCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([walletId, status])
+  @@index([ownerInviteId])
+}
+
+model WalletSubscription {
+  id                        String               @id @default(cuid())
+  walletId                  String
+  provider                  SubscriptionProvider @default(STRIPE)
+  planKey                   String
+  status                    BillingStatus        @default(INCOMPLETE)
+  stripeCustomerId          String?              @unique
+  stripeSubscriptionId      String?              @unique
+  stripePriceId             String?
+  trialEndsAt               DateTime?
+  currentPeriodStart        DateTime?
+  currentPeriodEnd          DateTime?
+  cancelAtPeriodEnd         Boolean              @default(false)
+  canceledAt                DateTime?
+  startedAt                 DateTime?
+  metadata                  Json?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  wallet                    Wallet               @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, status])
+}
+
+model BillingRecord {
+  id                   String             @id @default(cuid())
+  walletId             String
+  providerConnectionId String?
+  sourceType           BillingSourceType
+  label                String
+  description          String?
+  amount               Decimal            @db.Decimal(10, 2)
+  currency             String             @default("USD")
+  cadence              BillingCadence
+  status               BillingStatus      @default(ACTIVE)
+  providerReference    String?
+  invoiceUrl           String?
+  billingUrl           String?
+  renewalDate          DateTime?
+  isOwnerManaged       Boolean            @default(true)
+  createdById          String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  wallet               Wallet             @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  providerConnection   ProviderConnection? @relation(fields: [providerConnectionId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, sourceType])
+  @@index([walletId, renewalDate])
+  @@index([providerConnectionId])
+}
+
+model Alert {
+  id                   String          @id @default(cuid())
+  walletId             String
+  providerConnectionId String?
+  severity             AlertSeverity
+  category             AlertCategory
+  title                String
+  message              String
+  recommendation       String?
+  status               AlertStatus     @default(OPEN)
+  dismissedAt          DateTime?
+  resolvedAt           DateTime?
+  snoozedUntil         DateTime?
+  createdById          String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  wallet               Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  providerConnection   ProviderConnection? @relation(fields: [providerConnectionId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, status, severity])
+  @@index([providerConnectionId])
+}
+
+model SupportRequest {
+  id                   String          @id @default(cuid())
+  walletId             String
+  providerConnectionId String?
+  requesterId          String?
+  subject              String
+  category             String
+  priority             SupportPriority @default(NORMAL)
+  status               SupportStatus   @default(OPEN)
+  description          String
+  internalNotes        String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  resolvedAt           DateTime?
+  wallet               Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  providerConnection   ProviderConnection? @relation(fields: [providerConnectionId], references: [id], onDelete: SetNull)
+  requester            User?           @relation("SupportRequester", fields: [requesterId], references: [id], onDelete: SetNull)
+  messages             SupportMessage[]
+
+  @@index([walletId, status, priority])
+  @@index([requesterId])
+  @@index([providerConnectionId])
+}
+
+model SupportMessage {
+  id                String         @id @default(cuid())
+  supportRequestId  String
+  authorId          String?
+  body              String
+  isInternal        Boolean        @default(false)
+  createdAt         DateTime       @default(now())
+  supportRequest    SupportRequest @relation(fields: [supportRequestId], references: [id], onDelete: Cascade)
+  author            User?          @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([supportRequestId, createdAt])
+}
+
+model PartnerAccount {
+  id                 String        @id @default(cuid())
+  userId             String        @unique
+  displayName        String
+  status             PartnerStatus @default(PENDING)
+  commissionRateBps  Int
+  payoutProvider     String?
+  payoutReference    String?
+  metadata           Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referrals          Referral[]
+  payouts            Payout[]
+
+  @@index([status])
+}
+
+model Referral {
+  id                   String         @id @default(cuid())
+  walletId             String
+  partnerAccountId     String
+  referredByUserId     String?
+  status               ReferralStatus @default(PENDING)
+  attributionSource    String?
+  commissionRateBps    Int
+  commissionWindowEnds DateTime?
+  activatedAt          DateTime?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  wallet               Wallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  partnerAccount       PartnerAccount @relation(fields: [partnerAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, partnerAccountId])
+  @@index([partnerAccountId, status])
+  @@index([walletId, status])
+}
+
+model Payout {
+  id                String        @id @default(cuid())
+  partnerAccountId  String
+  periodStart       DateTime
+  periodEnd         DateTime
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("USD")
+  status            PayoutStatus  @default(PENDING)
+  externalPayoutId  String?
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  paidAt            DateTime?
+  partnerAccount    PartnerAccount @relation(fields: [partnerAccountId], references: [id], onDelete: Cascade)
+
+  @@index([partnerAccountId, status])
+  @@index([periodStart, periodEnd])
+}
+
+model Notification {
+  id                 String             @id @default(cuid())
+  userId             String
+  walletId           String?
+  type               NotificationType
+  channel            NotificationChannel
+  status             NotificationStatus @default(QUEUED)
+  subject            String?
+  body               String
+  ctaUrl             String?
+  metadata           Json?
+  sentAt             DateTime?
+  deliveredAt        DateTime?
+  readAt             DateTime?
+  failedAt           DateTime?
+  failureReason      String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet             Wallet?            @relation(fields: [walletId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status, createdAt])
+  @@index([walletId, type])
+}
+
+model NotificationPreference {
+  id          String               @id @default(cuid())
+  userId      String
+  type        NotificationType
+  channel     NotificationChannel
+  isEnabled   Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, channel])
+}
+
+model Setting {
+  id          String        @id @default(cuid())
+  scope       SettingScope
+  userId      String?
+  walletId    String?
+  key         String
+  value       Json
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User?         @relation("UserSettings", fields: [userId], references: [id], onDelete: Cascade)
+  wallet      Wallet?       @relation("WalletSettings", fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([scope, userId, walletId, key])
+  @@index([walletId, key])
+  @@index([userId, key])
+}
+
+model AuditLog {
+  id               String          @id @default(cuid())
+  actorUserId      String?
+  actorType        AuditActorType
+  walletId         String?
+  entityType       AuditEntityType
+  entityId         String
+  action           String
+  summary          String
+  metadata         Json?
+  ipAddress        String?
+  userAgent        String?
+  requestId        String?
+  createdAt        DateTime        @default(now())
+  actorUser        User?           @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  wallet           Wallet?         @relation(fields: [walletId], references: [id], onDelete: SetNull)
+
+  @@index([walletId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+}
