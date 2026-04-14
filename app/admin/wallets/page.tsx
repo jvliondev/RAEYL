@@ -34,14 +34,14 @@ export default async function AdminWalletsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={wallet.status === "ACTIVE" ? "success" : wallet.status === "IN_SETUP" ? "warning" : "secondary"}>
+                  <Badge variant={"neutral"}>
                     {wallet.status.toLowerCase().replace("_", " ")}
                   </Badge>
                   {wallet.planTier !== "None" && (
                     <Badge variant="accent">{wallet.planTier}</Badge>
                   )}
-                  <Badge variant="secondary">{wallet.memberCount} members</Badge>
-                  <Badge variant="secondary">{wallet.providerCount} tools</Badge>
+                  <Badge variant="neutral">{wallet.memberCount} members</Badge>
+                  <Badge variant="neutral">{wallet.providerCount} tools</Badge>
                 </div>
               </Link>
             ))

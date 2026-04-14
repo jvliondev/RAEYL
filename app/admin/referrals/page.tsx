@@ -30,7 +30,7 @@ export default async function AdminReferralsPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={ref.status === "ACTIVE" ? "success" : ref.status === "PENDING" ? "warning" : "secondary"}>
+                  <Badge variant={ref.status === "ACTIVE" ? "success" : ref.status === "PENDING" ? "warning" : "neutral"}>
                     {ref.status.toLowerCase()}
                   </Badge>
                   <Badge variant={ref.partnerStatus === "ACTIVE" ? "success" : "warning"}>

@@ -36,10 +36,10 @@ export default async function AdminUsersPage() {
                     <Badge variant="accent">{user.type.toLowerCase()}</Badge>
                   )}
                   {user.walletCount > 0 && (
-                    <Badge variant="secondary">{user.walletCount} wallet{user.walletCount !== 1 ? "s" : ""}</Badge>
+                    <Badge variant="neutral">{user.walletCount} wallet{user.walletCount !== 1 ? "s" : ""}</Badge>
                   )}
                   {user.ownedWallets > 0 && (
-                    <Badge variant="secondary">{user.ownedWallets} owned</Badge>
+                    <Badge variant="neutral">{user.ownedWallets} owned</Badge>
                   )}
                 </div>
               </div>

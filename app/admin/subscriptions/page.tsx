@@ -36,7 +36,7 @@ export default async function AdminSubscriptionsPage() {
                   }>
                     {sub.status.toLowerCase().replace("_", " ")}
                   </Badge>
-                  <Badge variant="secondary">{sub.provider.toLowerCase()}</Badge>
+                  <Badge variant="neutral">{sub.provider.toLowerCase()}</Badge>
                 </div>
               </div>
             ))

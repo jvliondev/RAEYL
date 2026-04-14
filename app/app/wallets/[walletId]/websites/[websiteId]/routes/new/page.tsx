@@ -154,7 +154,7 @@ export default async function NewEditRoutePage({
                 {website.editRoutes.length === 0 ? "None yet" : (
                   <span className="space-x-1">
                     {website.editRoutes.map((r) => (
-                      <Badge key={r.id} variant={r.isPrimary ? "default" : "secondary"}>
+                      <Badge key={r.id} variant={r.isPrimary ? "accent" : "neutral"}>
                         {r.label}
                       </Badge>
                     ))}
