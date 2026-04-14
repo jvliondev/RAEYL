@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 
 import { prisma } from "@/lib/prisma";
-import { signIn } from "@/lib/auth/config";
+import { signIn, signOut } from "@/lib/auth/config";
 import { recordAuditEvent } from "@/lib/audit";
 import { emailSchema } from "@/lib/validation/backend";
 
@@ -57,6 +57,10 @@ export async function registerUser(
 
 export async function loginWithGoogle() {
   await signIn("google", { redirectTo: "/app" });
+}
+
+export async function logOut() {
+  await signOut({ redirectTo: "/sign-in" });
 }
 
 export async function sendMagicLink(

@@ -6,12 +6,15 @@ import {
   Gauge,
   Handshake,
   LifeBuoy,
+  LogOut,
   PanelLeft,
   Settings2,
   Shield,
   Siren,
   Workflow
 } from "lucide-react";
+
+import { logOut } from "@/lib/actions/auth";
 
 import { requireSession } from "@/lib/auth/access";
 import { hasCapability, type Capability } from "@/lib/auth/permissions";
@@ -171,6 +174,22 @@ export async function AppShell({
                     Admin console
                   </Link>
                 ) : null}
+                <Link
+                  href="/app/settings/account"
+                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Account settings
+                </Link>
+                <form action={logOut}>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </form>
               </div>
             </nav>
             {wallets.length > 1 ? (
@@ -219,8 +238,19 @@ export async function AppShell({
                 >
                   {wallet.id ? "Wallet home" : "Wallets"}
                 </Link>
-                <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
-                  {wallet.userName}
+                <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-muted">
+                  <Link href="/app/settings/account" className="hover:text-foreground transition">
+                    {wallet.userName}
+                  </Link>
+                  <form action={logOut}>
+                    <button
+                      type="submit"
+                      title="Sign out"
+                      className="flex items-center text-muted hover:text-foreground transition"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
