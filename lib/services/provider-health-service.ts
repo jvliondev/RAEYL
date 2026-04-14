@@ -4,6 +4,8 @@
  * Called from server actions or API routes — never from the edge/middleware.
  */
 
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { getVercelProjectHealth, mapVercelStateToHealth } from "./vercel-service";
 import { recordAuditEvent } from "@/lib/audit";
@@ -122,7 +124,7 @@ async function persistHealthResult(
       syncState: result.syncState,
       lastHealthCheckAt: new Date(),
       lastSyncAt: result.syncState === "SYNCED" ? new Date() : undefined,
-      ...(metadata ? { metadata } : {})
+      ...(metadata ? { metadata: metadata as Prisma.InputJsonValue } : {})
     }
   });
 }
