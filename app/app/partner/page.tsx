@@ -1,10 +1,33 @@
 import { AppShell } from "@/components/app/app-shell";
+import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/app/stat-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { wallet } from "@/lib/mock-data";
-import { formatCurrency } from "@/lib/utils";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/app/empty-state";
+import { requireSession } from "@/lib/auth/access";
+import { getPartnerDashboardData } from "@/lib/data/admin";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
-export default function PartnerPage() {
+export default async function PartnerPage() {
+  const session = await requireSession();
+  const data = await getPartnerDashboardData(session.user.id);
+
+  if (!data) {
+    return (
+      <AppShell
+        title="Partner dashboard"
+        description="Track referred wallets, active rewards, and payout readiness."
+      >
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-sm text-muted">
+              You don&apos;t have a partner account yet. Contact the RAEYL team to get set up.
+            </p>
+          </CardContent>
+        </Card>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell
       title="Partner dashboard"
@@ -12,26 +35,105 @@ export default function PartnerPage() {
     >
       <div className="space-y-8">
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Active referrals" value={String(wallet.referrals.length)} supporting="Wallets attributed to your partner account." />
-          <StatCard label="Estimated monthly payout" value={formatCurrency(wallet.referrals[0]?.monthlyPayout ?? 0)} supporting="Current referred wallet rewards." tone="success" />
-          <StatCard label="Payout status" value="Pending" supporting="Next payout window closes at month end." tone="warning" />
+          <StatCard
+            label="Active referrals"
+            value={String(data.stats.activeReferrals)}
+            supporting={`${data.stats.totalReferrals} total attributed wallets.`}
+          />
+          <StatCard
+            label="Estimated monthly payout"
+            value={formatCurrency(data.stats.estimatedMonthlyPayout)}
+            supporting="Based on active referrals and commission rate."
+            tone="success"
+          />
+          <StatCard
+            label="Commission rate"
+            value={`${(data.partner.commissionRateBps / 100).toFixed(1)}%`}
+            supporting="Your current partner commission rate."
+            tone="accent"
+          />
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Attributed wallets</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {wallet.referrals.map((referral) => (
-              <div key={referral.id} className="flex items-center justify-between rounded-md border border-white/10 p-4">
-                <div>
-                  <div className="font-medium">{referral.walletName}</div>
-                  <div className="text-sm text-muted">{referral.partnerName}</div>
-                </div>
-                <div className="text-sm">{formatCurrency(referral.monthlyPayout)}</div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Attributed wallets</CardTitle>
+              <CardDescription>Wallets referred through your partner account.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {data.referrals.length === 0 ? (
+                <EmptyState
+                  title="No referrals yet"
+                  description="Wallets attributed to your partner account will appear here."
+                />
+              ) : (
+                data.referrals.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between rounded-md border border-white/10 p-4"
+                  >
+                    <div>
+                      <div className="font-medium">{r.walletName}</div>
+                      <div className="text-sm text-muted">{r.businessName}</div>
+                      {r.activatedAt && (
+                        <div className="text-xs text-muted mt-1">
+                          Active since {formatDate(r.activatedAt)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={r.status === "ACTIVE" ? "success" : "warning"}>
+                        {r.status.toLowerCase()}
+                      </Badge>
+                      <div className="text-sm text-muted">
+                        {r.planTier}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payout history</CardTitle>
+              <CardDescription>Recent payouts from your partner account.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {data.payouts.length === 0 ? (
+                <EmptyState
+                  title="No payouts yet"
+                  description="Payouts will appear here once your first payout period closes."
+                />
+              ) : (
+                data.payouts.map((p) => (
+                  <div
+                    key={p.id}
+                    className="rounded-md border border-white/10 p-4 space-y-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{formatCurrency(p.amount)}</span>
+                      <Badge variant={
+                        p.status === "PAID" ? "success" :
+                        p.status === "READY" ? "accent" :
+                        p.status === "FAILED" ? "danger" : "warning"
+                      }>
+                        {p.status.toLowerCase()}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted">
+                      {formatDate(p.periodStart)} – {formatDate(p.periodEnd)}
+                    </div>
+                    {p.paidAt && (
+                      <div className="text-xs text-muted">Paid {formatDate(p.paidAt)}</div>
+                    )}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AppShell>
   );

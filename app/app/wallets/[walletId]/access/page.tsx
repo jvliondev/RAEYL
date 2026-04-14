@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,11 +9,14 @@ import { requireSession } from "@/lib/auth/access";
 import { getWalletAccessData } from "@/lib/data/wallets";
 
 export default async function AccessPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ walletId: string }>;
+  searchParams: Promise<{ invite?: string; transferred?: string }>;
 }) {
   const { walletId } = await params;
+  const { invite, transferred } = await searchParams;
   const session = await requireSession();
   const { walletContext, members, pendingInvites } = await getWalletAccessData(
     walletId,
@@ -24,6 +29,17 @@ export default async function AccessPage({
       description="Review access, invite teammates, and keep ownership clear."
       walletContext={walletContext}
     >
+      {invite === "sent" && (
+        <div className="mb-4 rounded-md border border-success/30 bg-success/5 p-4 text-sm text-success">
+          Invite sent. They will receive a notification once they log in.
+        </div>
+      )}
+      {transferred === "1" && (
+        <div className="mb-4 rounded-md border border-success/30 bg-success/5 p-4 text-sm text-success">
+          Ownership transferred successfully.
+        </div>
+      )}
+
       <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
         <Card>
           <CardHeader>
@@ -45,17 +61,23 @@ export default async function AccessPage({
                       {member.isPrimaryOwner
                         ? "Primary owner"
                         : member.role === "developer"
-                          ? "Website setup partner"
+                          ? "Developer"
                           : member.role === "billing_manager"
                             ? "Billing access"
                             : member.role === "editor"
-                              ? "Content editor"
+                              ? "Editor"
                               : member.role === "viewer"
-                                ? "View only"
-                                : member.role.replace("_", " ")}
+                                ? "Viewer"
+                                : member.role === "support"
+                                  ? "Support"
+                                  : member.role.replace("_", " ")}
                     </Badge>
-                    <Badge variant={member.status === "active" ? "success" : "warning"}>{member.status}</Badge>
-                    {member.isPrimaryDeveloper ? <Badge variant="accent">Primary developer</Badge> : null}
+                    <Badge variant={member.status === "active" ? "success" : "warning"}>
+                      {member.status}
+                    </Badge>
+                    {member.isPrimaryDeveloper && (
+                      <Badge variant="accent">Primary developer</Badge>
+                    )}
                   </div>
                 </div>
               ))
@@ -67,29 +89,39 @@ export default async function AccessPage({
             )}
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
             <div>
               <CardTitle>Manage access</CardTitle>
-              <CardDescription>Invite collaborators or change roles with care.</CardDescription>
+              <CardDescription>Invite collaborators or reassign ownership.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full">Invite teammate</Button>
-            <Button variant="secondary" className="w-full">Transfer primary ownership</Button>
-            {pendingInvites.length ? (
+            <Button className="w-full" asChild>
+              <Link href={`/app/wallets/${walletId}/access/invite`}>
+                Invite teammate
+              </Link>
+            </Button>
+            <Button variant="secondary" className="w-full" asChild>
+              <Link href={`/app/wallets/${walletId}/access/transfer`}>
+                Transfer primary ownership
+              </Link>
+            </Button>
+
+            {pendingInvites.length > 0 && (
               <div className="rounded-md border border-white/10 p-4 text-sm text-muted">
                 <div className="mb-2 font-medium text-foreground">Pending invites</div>
                 <div className="space-y-2">
                   {pendingInvites.map((invite) => (
                     <div key={invite.id}>
                       <div>{invite.email}</div>
-                      <div className="text-xs">{invite.role} • {invite.status}</div>
+                      <div className="text-xs">{invite.role} · {invite.status}</div>
                     </div>
                   ))}
                 </div>
               </div>
-            ) : null}
+            )}
           </CardContent>
         </Card>
       </div>

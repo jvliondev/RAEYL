@@ -2,7 +2,9 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { loginWithGoogle } from "@/lib/actions/auth";
 import { SignInForm } from "./sign-in-form";
+import { MagicLinkForm } from "./magic-link-form";
 
 export default function SignInPage() {
   return (
@@ -17,9 +19,18 @@ export default function SignInPage() {
         </CardHeader>
         <CardContent>
           <SignInForm />
-          <div className="mt-4 grid gap-3">
-            <Button variant="secondary">Send a sign-in link</Button>
-            <Button variant="secondary">Continue with Google</Button>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-3 text-sm text-muted">
+              <div className="h-px flex-1 bg-white/10" />
+              or continue with
+              <div className="h-px flex-1 bg-white/10" />
+            </div>
+            <form action={loginWithGoogle}>
+              <Button type="submit" variant="secondary" className="w-full">
+                Continue with Google
+              </Button>
+            </form>
+            <MagicLinkForm />
           </div>
           <p className="mt-6 text-center text-sm text-muted">
             New to RAEYL?{" "}

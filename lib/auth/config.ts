@@ -1,12 +1,17 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import Resend from "next-auth/providers/resend";
 import NextAuth from "next-auth";
 import bcrypt from "bcryptjs";
 
 import { baseAuthConfig } from "@/lib/auth/base";
 import { prisma } from "@/lib/prisma";
 import { log } from "@/lib/logging";
+
+const resendProvider = process.env.RESEND_API_KEY
+  ? [Resend({ apiKey: process.env.RESEND_API_KEY, from: process.env.EMAIL_FROM ?? "noreply@raeyl.com" })]
+  : [];
 
 export const authConfig = {
   ...baseAuthConfig,
@@ -16,6 +21,7 @@ export const authConfig = {
       clientId: process.env.GOOGLE_CLIENT_ID ?? "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ""
     }),
+    ...resendProvider,
     Credentials({
       name: "Email and password",
       credentials: {

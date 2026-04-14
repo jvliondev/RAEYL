@@ -1,9 +1,12 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth/access";
 import { getWalletProviderDetailData } from "@/lib/data/wallets";
+import { detectCMSProvider } from "@/lib/services/cms-service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default async function ProviderDetailPage({
@@ -18,6 +21,8 @@ export default async function ProviderDetailPage({
     providerId,
     session.user.id
   );
+
+  const isCMS = provider.category === "cms" || !!detectCMSProvider(provider.name);
 
   return (
     <AppShell
@@ -46,9 +51,43 @@ export default async function ProviderDetailPage({
               </Badge>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Button>Open tool dashboard</Button>
-              <Button variant="secondary">Review billing</Button>
-              <Button variant="secondary">Reconnect access</Button>
+              {provider.dashboardUrl ? (
+                <Button asChild>
+                  <a href={provider.dashboardUrl} target="_blank" rel="noopener noreferrer">
+                    Open tool dashboard
+                  </a>
+                </Button>
+              ) : (
+                <Button disabled>Open tool dashboard</Button>
+              )}
+              {provider.billingUrl ? (
+                <Button asChild variant="secondary">
+                  <a href={provider.billingUrl} target="_blank" rel="noopener noreferrer">
+                    Review billing
+                  </a>
+                </Button>
+              ) : null}
+              {provider.editUrl ? (
+                <Button asChild variant="secondary">
+                  <a href={provider.editUrl} target="_blank" rel="noopener noreferrer">
+                    Open editor
+                  </a>
+                </Button>
+              ) : null}
+              {isCMS && (
+                <Button asChild variant="secondary">
+                  <Link href={`/app/wallets/${walletId}/providers/${providerId}/cms-setup`}>
+                    Set up editing
+                  </Link>
+                </Button>
+              )}
+              {provider.supportUrl ? (
+                <Button asChild variant="ghost">
+                  <a href={provider.supportUrl} target="_blank" rel="noopener noreferrer">
+                    Support docs
+                  </a>
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
           <Card>

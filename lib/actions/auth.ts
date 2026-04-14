@@ -51,6 +51,35 @@ export async function registerUser(formData: FormData) {
   redirect("/app/onboarding");
 }
 
+export async function loginWithGoogle() {
+  await signIn("google", { redirectTo: "/app" });
+}
+
+export async function sendMagicLink(
+  _prevState: { sent?: boolean; email?: string; error?: string } | null,
+  formData: FormData
+): Promise<{ sent?: boolean; email?: string; error?: string }> {
+  const email = String(formData.get("email") ?? "").toLowerCase().trim();
+
+  if (!email || !email.includes("@")) {
+    return { error: "Please enter a valid email address." };
+  }
+
+  if (!process.env.RESEND_API_KEY) {
+    return { error: "Email sign-in is not configured yet. Sign in with your password or Google." };
+  }
+
+  try {
+    await signIn("resend", { email, redirect: false });
+    return { sent: true, email };
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "Could not send the sign-in link. Please try again." };
+    }
+    throw error;
+  }
+}
+
 export async function loginWithCredentials(
   _prevState: string | null,
   formData: FormData

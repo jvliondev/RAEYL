@@ -521,7 +521,10 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
       planTier: wallet.planTier ?? "Starter",
       role: role.toLowerCase()
     },
-    provider,
+    provider: {
+      ...provider,
+      websiteId: providerRecord.websiteId ?? null
+    },
     recentBilling: providerRecord.billingRecords.map((record) => ({
       id: record.id,
       label: record.label,
@@ -899,6 +902,13 @@ export async function getWalletHandoffData(walletId: string, userId: string) {
   const latestInvite = wallet.invites[0] ?? null;
   const latestRecord = wallet.handoffRecords[0] ?? null;
 
+  // Fetch first website ID for checklist links
+  const firstWebsite = await prisma.website.findFirst({
+    where: { walletId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true }
+  });
+
   return {
     walletContext: {
       id: wallet.id,
@@ -909,6 +919,7 @@ export async function getWalletHandoffData(walletId: string, userId: string) {
     ownerEmail: wallet.ownerEmail,
     handoffStatus: humanizeEnum(wallet.handoffStatus),
     ownerAcceptanceStatus: humanizeEnum(wallet.ownerAcceptanceStatus),
+    firstWebsiteId: firstWebsite?.id ?? null,
     readiness,
     latestInvite: latestInvite
       ? {
@@ -981,13 +992,14 @@ export async function getWalletAccessData(walletId: string, userId: string) {
     },
     members: wallet.memberships.map((member) => ({
       id: member.id,
+      userId: member.userId,
       name: member.user.name ?? member.user.email,
       email: member.user.email,
       role: mapWalletRole(member.role),
       status: mapMembershipStatus(member.status),
       isPrimaryOwner: member.isPrimaryOwner,
       isPrimaryDeveloper: member.isPrimaryDeveloper
-    })) satisfies Array<WalletMember & { isPrimaryOwner: boolean; isPrimaryDeveloper: boolean }>,
+    })),
     pendingInvites: wallet.invites.map((invite) => ({
       id: invite.id,
       email: invite.email,
@@ -1269,7 +1281,9 @@ export async function getWalletWebsiteDetailData(walletId: string, websiteId: st
       editRoutes: website.editRoutes.map((route) => ({
         id: route.id,
         label: route.label,
-        description: route.description ?? "Open the connected editing destination."
+        description: route.description ?? "Open the connected editing destination.",
+        destinationUrl: route.destinationUrl,
+        isPrimary: route.isPrimary
       }))
     },
     providers: wallet.providers.map(mapProvider)
@@ -1391,4 +1405,34 @@ export async function getAdminAuditData() {
     actor: log.actorUser?.name ?? log.actorUser?.email ?? humanizeEnum(log.actorType),
     createdAt: log.createdAt.toISOString()
   }));
+}
+
+export type UserPreferences = {
+  defaultLandingPage: "overview" | "wallets" | "notifications";
+  compactMode: boolean;
+  dateFormat: "relative" | "absolute";
+};
+
+const PREFERENCE_DEFAULTS: UserPreferences = {
+  defaultLandingPage: "overview",
+  compactMode: false,
+  dateFormat: "relative"
+};
+
+export async function getUserPreferences(userId: string): Promise<UserPreferences> {
+  const settings = await prisma.setting.findMany({
+    where: {
+      scope: "USER",
+      userId,
+      key: { in: ["defaultLandingPage", "compactMode", "dateFormat"] }
+    }
+  });
+
+  const map = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+
+  return {
+    defaultLandingPage: (map.defaultLandingPage as UserPreferences["defaultLandingPage"]) ?? PREFERENCE_DEFAULTS.defaultLandingPage,
+    compactMode: (map.compactMode as boolean) ?? PREFERENCE_DEFAULTS.compactMode,
+    dateFormat: (map.dateFormat as UserPreferences["dateFormat"]) ?? PREFERENCE_DEFAULTS.dateFormat
+  };
 }

@@ -22,6 +22,7 @@ import {
   billingRecordDeleteSchema,
   billingRecordSchema,
   billingRecordUpdateSchema,
+  editRouteSchema,
   inviteCreateSchema,
   providerConnectionSchema,
   referralSchema,
@@ -715,6 +716,214 @@ export async function acceptInvite(token: string) {
   redirect(`/app/wallets/${invite.walletId}`);
 }
 
+export async function createEditRoute(formData: FormData) {
+  const session = await requireSession();
+
+  const parsed = editRouteSchema.parse({
+    walletId: formData.get("walletId"),
+    websiteId: formData.get("websiteId"),
+    providerId: formData.get("providerId") || undefined,
+    label: formData.get("label"),
+    description: formData.get("description") || undefined,
+    destinationUrl: formData.get("destinationUrl"),
+    contentKey: formData.get("contentKey") || undefined,
+    isPrimary: formData.get("isPrimary") === "true",
+    visibleToRoles: formData.getAll("visibleToRoles").filter(Boolean) as WalletRole[],
+    sortOrder: Number(formData.get("sortOrder") ?? 0),
+    isEnabled: true
+  });
+
+  await requireWalletCapability(parsed.walletId, session.user.id, "website.write");
+  await requireWebsiteInWallet(parsed.walletId, parsed.websiteId);
+
+  if (parsed.isPrimary) {
+    await prisma.editRoute.updateMany({
+      where: { websiteId: parsed.websiteId },
+      data: { isPrimary: false }
+    });
+  }
+
+  const route = await prisma.editRoute.create({
+    data: {
+      walletId: parsed.walletId,
+      websiteId: parsed.websiteId,
+      providerId: parsed.providerId,
+      label: parsed.label,
+      description: parsed.description,
+      destinationUrl: parsed.destinationUrl,
+      contentKey: parsed.contentKey,
+      isPrimary: parsed.isPrimary,
+      visibleToRoles: parsed.visibleToRoles,
+      sortOrder: parsed.sortOrder,
+      isEnabled: true
+    }
+  });
+
+  await prisma.wallet.update({
+    where: { id: parsed.walletId },
+    data: { setupStatus: "ROUTES_ADDED" }
+  });
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId: parsed.walletId,
+    entityType: "WEBSITE",
+    entityId: route.id,
+    action: "edit_route.created",
+    summary: `Edit path "${parsed.label}" added.`
+  });
+
+  redirect(`/app/wallets/${parsed.walletId}/websites/${parsed.websiteId}`);
+}
+
+export async function deleteEditRoute(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+  const websiteId = String(formData.get("websiteId") ?? "");
+  const routeId = String(formData.get("routeId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "website.write");
+
+  const route = await prisma.editRoute.findFirst({
+    where: { id: routeId, walletId }
+  });
+
+  if (!route) throw new Error("Edit path not found.");
+
+  await prisma.editRoute.delete({ where: { id: routeId } });
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId,
+    entityType: "WEBSITE",
+    entityId: routeId,
+    action: "edit_route.deleted",
+    summary: `Edit path "${route.label}" removed.`
+  });
+
+  redirect(`/app/wallets/${walletId}/websites/${websiteId}`);
+}
+
+export async function inviteTeamMember(formData: FormData) {
+  const session = await requireSession();
+
+  const parsed = inviteCreateSchema.parse({
+    walletId: formData.get("walletId"),
+    email: formData.get("email"),
+    role: formData.get("role"),
+    inviteType: "WALLET_MEMBER",
+    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
+  });
+
+  await requireWalletCapability(parsed.walletId, session.user.id, "access.manage");
+
+  const existing = await prisma.invite.findFirst({
+    where: {
+      walletId: parsed.walletId,
+      email: parsed.email,
+      status: { in: ["DRAFT", "SENT", "VIEWED"] }
+    }
+  });
+
+  if (existing) throw new Error("An active invite already exists for this email address.");
+
+  const token = crypto.randomUUID() + crypto.randomUUID();
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const invite = await prisma.invite.create({
+    data: {
+      walletId: parsed.walletId,
+      sentById: session.user.id,
+      email: parsed.email,
+      role: parsed.role as WalletRole,
+      inviteType: "WALLET_MEMBER",
+      expiresAt: parsed.expiresAt,
+      tokenHash,
+      status: "SENT",
+      sentAt: new Date()
+    }
+  });
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId: parsed.walletId,
+    entityType: "INVITE",
+    entityId: invite.id,
+    action: "invite.sent",
+    summary: `Team invite sent to ${invite.email} as ${parsed.role}.`
+  });
+
+  const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });
+  if (existingUser) {
+    await createInAppNotification({
+      userId: existingUser.id,
+      walletId: parsed.walletId,
+      type: "INVITE",
+      subject: "You've been invited to a website wallet",
+      body: "You have been invited to collaborate on a website wallet.",
+      ctaUrl: `/accept-invite/${token}`
+    });
+  }
+
+  redirect(`/app/wallets/${parsed.walletId}/access?invite=sent`);
+}
+
+export async function transferPrimaryOwnership(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+  const toUserId = String(formData.get("toUserId") ?? "");
+
+  if (!walletId || !toUserId) throw new Error("Missing required fields.");
+
+  await requireWalletCapability(walletId, session.user.id, "access.manage");
+
+  const targetMembership = await prisma.walletMembership.findFirst({
+    where: { walletId, userId: toUserId, status: "ACTIVE" },
+    include: { user: { select: { name: true, email: true } } }
+  });
+
+  if (!targetMembership) throw new Error("Target user is not an active member of this wallet.");
+
+  await prisma.walletMembership.updateMany({
+    where: { walletId, isPrimaryOwner: true },
+    data: { isPrimaryOwner: false }
+  });
+
+  await prisma.walletMembership.update({
+    where: { id: targetMembership.id },
+    data: { isPrimaryOwner: true, role: "WALLET_OWNER" }
+  });
+
+  await prisma.wallet.update({
+    where: { id: walletId },
+    data: { primaryOwnerId: toUserId }
+  });
+
+  await createInAppNotification({
+    userId: toUserId,
+    walletId,
+    type: "HANDOFF",
+    subject: "You are now the primary owner",
+    body: "Primary wallet ownership has been transferred to you.",
+    ctaUrl: `/app/wallets/${walletId}`
+  });
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId,
+    entityType: "MEMBERSHIP",
+    entityId: targetMembership.id,
+    action: "ownership.transferred",
+    summary: `Primary ownership transferred to ${targetMembership.user.name ?? targetMembership.user.email}.`
+  });
+
+  redirect(`/app/wallets/${walletId}/access?transferred=1`);
+}
+
 export async function completeHandoff(formData: FormData) {
   const session = await requireSession();
   const walletId = String(formData.get("walletId") ?? "");
@@ -780,5 +989,33 @@ export async function completeHandoff(formData: FormData) {
     });
   }
 
-  redirect(`/app/wallets/${walletId}?handoff=complete`);
+  redirect(`/app/wallets/${walletId}/handoff/complete`);
+}
+
+export async function saveUserPreferences(formData: FormData) {
+  const session = await requireSession();
+  const userId = session.user.id;
+
+  const prefs: Record<string, Prisma.InputJsonValue> = {
+    defaultLandingPage: String(formData.get("defaultLandingPage") ?? "overview"),
+    compactMode: formData.get("compactMode") === "true",
+    dateFormat: String(formData.get("dateFormat") ?? "relative")
+  };
+
+  await Promise.all(
+    Object.entries(prefs).map(async ([key, value]) => {
+      const existing = await prisma.setting.findFirst({
+        where: { scope: "USER", userId, walletId: null, key }
+      });
+      if (existing) {
+        await prisma.setting.update({ where: { id: existing.id }, data: { value } });
+      } else {
+        await prisma.setting.create({
+          data: { scope: "USER", userId, key, value }
+        });
+      }
+    })
+  );
+
+  redirect("/app/settings/preferences?updated=1");
 }
