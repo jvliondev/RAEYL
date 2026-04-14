@@ -135,7 +135,7 @@ export default async function WalletDashboardPage({
                       <div className="font-medium">{provider.name}</div>
                       <Badge variant={
                         provider.health === "healthy" ? "success" :
-                        provider.health === "issue" ? "danger" : "secondary"
+                        provider.health === "issue" ? "danger" : "neutral"
                       }>
                         {provider.health === "healthy" ? "Running" :
                          provider.health === "issue" ? "Needs attention" : "Connected"}
