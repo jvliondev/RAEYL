@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
+import { AuthError } from "next-auth";
 
 import { prisma } from "@/lib/prisma";
 import { signIn } from "@/lib/auth/config";
@@ -64,10 +65,11 @@ export async function loginWithCredentials(
       redirectTo: "/app"
     });
   } catch (error) {
-    // next-auth throws a redirect error on success — re-throw it so the redirect works
-    const { isRedirectError } = await import("next/dist/client/components/redirect-error");
-    if (isRedirectError(error)) throw error;
-    return "Invalid email or password. Please try again.";
+    if (error instanceof AuthError) {
+      return "Invalid email or password. Please try again.";
+    }
+    // re-throw redirect errors so Next.js can handle the redirect
+    throw error;
   }
 
   return null;
