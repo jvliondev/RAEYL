@@ -9,28 +9,31 @@ import { signIn } from "@/lib/auth/config";
 import { recordAuditEvent } from "@/lib/audit";
 import { emailSchema } from "@/lib/validation/backend";
 
-export async function registerUser(formData: FormData) {
+export async function registerUser(
+  _prevState: string | null,
+  formData: FormData
+): Promise<string | null> {
   const name = String(formData.get("name") ?? "").trim();
-  const email = emailSchema.parse(String(formData.get("email") ?? ""));
+  const rawEmail = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const agencyName = String(formData.get("agencyName") ?? "").trim();
 
-  if (password.length < 12) {
-    throw new Error("Password must be at least 12 characters.");
+  if (!name) return "Please enter your full name.";
+  if (password.length < 12) return "Password must be at least 12 characters.";
+
+  let email: string;
+  try {
+    email = emailSchema.parse(rawEmail);
+  } catch {
+    return "Please enter a valid email address.";
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    throw new Error("An account already exists for this email.");
-  }
+  if (existing) return "An account already exists for this email. Try signing in instead.";
 
   const passwordHash = await bcrypt.hash(password, 12);
   const user = await prisma.user.create({
-    data: {
-      email,
-      name,
-      passwordHash
-    }
+    data: { email, name, passwordHash }
   });
 
   await recordAuditEvent({
@@ -42,11 +45,12 @@ export async function registerUser(formData: FormData) {
     summary: `New user created${agencyName ? ` for ${agencyName}` : ""}.`
   });
 
-  await signIn("credentials", {
-    email,
-    password,
-    redirect: false
-  });
+  try {
+    await signIn("credentials", { email, password, redirect: false });
+  } catch {
+    // If auto-sign-in fails, redirect to sign-in page rather than crashing
+    redirect("/sign-in?registered=1");
+  }
 
   redirect("/app/onboarding");
 }

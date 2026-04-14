@@ -6,7 +6,14 @@ import { loginWithGoogle } from "@/lib/actions/auth";
 import { SignInForm } from "./sign-in-form";
 import { MagicLinkForm } from "./magic-link-form";
 
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const justRegistered = params.registered === "1";
+
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-md">
@@ -18,6 +25,11 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {justRegistered && (
+            <div className="mb-4 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-muted">
+              Account created — sign in to continue.
+            </div>
+          )}
           <SignInForm />
           <div className="mt-4 space-y-3">
             <div className="flex items-center gap-3 text-sm text-muted">

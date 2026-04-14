@@ -1,10 +1,5 @@
-import Link from "next/link";
-
-import { registerUser } from "@/lib/actions/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { SubmitButton } from "@/components/ui/submit-button";
+import { RegisterForm } from "./register-form";
 
 export default function GetStartedPage() {
   return (
@@ -44,27 +39,7 @@ export default function GetStartedPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={registerUser} className="space-y-4">
-              <FormField label="Full name">
-                <Input name="name" required placeholder="Alex Morgan" />
-              </FormField>
-              <FormField label="Work email">
-                <Input name="email" type="email" required placeholder="alex@agency.com" />
-              </FormField>
-              <FormField label="Password" hint="Use at least 12 characters.">
-                <Input name="password" type="password" required />
-              </FormField>
-              <FormField label="Agency or studio name">
-                <Input name="agencyName" placeholder="Northline Studio" />
-              </FormField>
-              <SubmitButton className="w-full">Create developer account</SubmitButton>
-            </form>
-            <p className="mt-6 text-center text-sm text-muted">
-              Already have an account?{" "}
-              <Link href="/sign-in" className="text-primary">
-                Sign in
-              </Link>
-            </p>
+            <RegisterForm />
           </CardContent>
         </Card>
       </div>
