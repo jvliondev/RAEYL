@@ -32,28 +32,62 @@ import {
   websiteCreateSchema
 } from "@/lib/validation/backend";
 
-export async function createWallet(formData: FormData) {
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "wallet";
+}
+
+export async function createWallet(
+  _prevState: string | null,
+  formData: FormData
+): Promise<string | null> {
   const session = await requireSession();
 
-  const parsed = walletCreateSchema.parse({
-    name: formData.get("name"),
-    slug: formData.get("slug"),
-    businessName: formData.get("businessName"),
-    businessCategory: formData.get("businessCategory"),
-    ownerContactName: formData.get("ownerContactName"),
+  const businessName = String(formData.get("businessName") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim() || businessName;
+
+  if (!businessName || businessName.length < 2) {
+    return "Please enter the business name.";
+  }
+
+  // Auto-generate slug, make unique with timestamp if needed
+  const baseSlug = toSlug(businessName);
+  const slug = `${baseSlug}-${Date.now().toString(36)}`;
+
+  // Normalise website URL — prepend https:// if missing
+  let websiteUrl = String(formData.get("websiteUrl") ?? "").trim() || undefined;
+  if (websiteUrl && !websiteUrl.startsWith("http")) {
+    websiteUrl = `https://${websiteUrl}`;
+  }
+
+  const result = walletCreateSchema.safeParse({
+    name: name || businessName,
+    slug,
+    businessName,
+    businessCategory: formData.get("businessCategory") || undefined,
+    ownerContactName: formData.get("ownerContactName") || undefined,
     ownerEmail: formData.get("ownerEmail") || undefined,
     ownerPhone: formData.get("ownerPhone") || undefined,
     websiteName: formData.get("websiteName") || undefined,
-    websiteUrl: formData.get("websiteUrl") || undefined,
+    websiteUrl,
     websiteDescription: formData.get("websiteDescription") || undefined,
     timezone: formData.get("timezone") || undefined,
     notes: formData.get("notes") || undefined,
     planTier: formData.get("planTier") || undefined
   });
 
+  if (!result.success) {
+    const first = result.error.errors[0];
+    return first ? `${first.path.join(".")}: ${first.message}` : "Please check the form and try again.";
+  }
+
   const wallet = await prisma.wallet.create({
     data: {
-      ...parsed,
+      ...result.data,
       createdById: session.user.id,
       primaryDeveloperId: session.user.id,
       status: "IN_SETUP",
