@@ -6,12 +6,12 @@ export const baseAuthConfig: NextAuthConfig = {
     signIn: "/sign-in"
   },
   session: {
-    strategy: "database"
+    strategy: "jwt"
   },
   callbacks: {
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+    async session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
       }
 
       return session;
