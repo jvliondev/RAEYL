@@ -1,11 +1,8 @@
 import Link from "next/link";
 
-import { loginWithCredentials } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FormField } from "@/components/ui/form-field";
-import { Input } from "@/components/ui/input";
-import { SubmitButton } from "@/components/ui/submit-button";
+import { SignInForm } from "./sign-in-form";
 
 export default function SignInPage() {
   return (
@@ -19,15 +16,7 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={loginWithCredentials} className="space-y-4">
-            <FormField label="Email">
-              <Input type="email" name="email" required placeholder="you@business.com" />
-            </FormField>
-            <FormField label="Password">
-              <Input type="password" name="password" required placeholder="Your password" />
-            </FormField>
-            <SubmitButton className="w-full">Open my wallet</SubmitButton>
-          </form>
+          <SignInForm />
           <div className="mt-4 grid gap-3">
             <Button variant="secondary">Send a sign-in link</Button>
             <Button variant="secondary">Continue with Google</Button>

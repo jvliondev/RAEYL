@@ -50,13 +50,25 @@ export async function registerUser(formData: FormData) {
   redirect("/app/onboarding");
 }
 
-export async function loginWithCredentials(formData: FormData) {
+export async function loginWithCredentials(
+  _prevState: string | null,
+  formData: FormData
+): Promise<string | null> {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
 
-  await signIn("credentials", {
-    email,
-    password,
-    redirectTo: "/app"
-  });
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+      redirectTo: "/app"
+    });
+  } catch (error) {
+    // next-auth throws a redirect error on success — re-throw it so the redirect works
+    const { isRedirectError } = await import("next/dist/client/components/redirect-error");
+    if (isRedirectError(error)) throw error;
+    return "Invalid email or password. Please try again.";
+  }
+
+  return null;
 }
