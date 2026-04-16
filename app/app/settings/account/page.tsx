@@ -23,6 +23,7 @@ export default async function AccountSettingsPage({
   });
   const resolvedSearchParams = await searchParams;
   const updated = typeof resolvedSearchParams.updated === "string";
+  const formError = typeof resolvedSearchParams.formError === "string" ? resolvedSearchParams.formError : null;
 
   return (
     <AppShell
@@ -30,6 +31,11 @@ export default async function AccountSettingsPage({
       description="Manage your personal profile, sign-in methods, and notification preferences."
     >
       <div className="max-w-3xl space-y-6">
+        {formError && (
+          <Card>
+            <CardContent className="py-4 text-sm text-destructive">{formError}</CardContent>
+          </Card>
+        )}
         {updated ? (
           <Card>
             <CardContent className="py-4 text-sm text-muted">Your account details were updated.</CardContent>

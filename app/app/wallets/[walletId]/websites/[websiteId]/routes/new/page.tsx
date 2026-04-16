@@ -11,11 +11,15 @@ import { requireSession } from "@/lib/auth/access";
 import { getWalletWebsiteDetailData } from "@/lib/data/wallets";
 
 export default async function NewEditRoutePage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ walletId: string; websiteId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { walletId, websiteId } = await params;
+  const sp = await searchParams;
+  const formError = typeof sp.formError === "string" ? sp.formError : null;
   const session = await requireSession();
   const { walletContext, website, providers } = await getWalletWebsiteDetailData(
     walletId,
@@ -32,6 +36,7 @@ export default async function NewEditRoutePage({
       walletContext={walletContext}
     >
       <form action={createEditRoute} className="grid gap-6 xl:grid-cols-[1fr_320px]">
+        {formError && <p className="xl:col-span-2 text-sm text-destructive">{formError}</p>}
         <input type="hidden" name="walletId" value={walletId} />
         <input type="hidden" name="websiteId" value={websiteId} />
 

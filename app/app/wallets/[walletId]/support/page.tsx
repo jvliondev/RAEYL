@@ -32,6 +32,7 @@ export default async function SupportPage({
     : false;
   const updated = typeof resolvedSearchParams.updated === "string" ? resolvedSearchParams.updated : null;
   const submitted = typeof resolvedSearchParams.submitted === "string";
+  const formError = typeof resolvedSearchParams.formError === "string" ? resolvedSearchParams.formError : null;
 
   return (
     <AppShell
@@ -40,6 +41,11 @@ export default async function SupportPage({
       walletContext={walletContext}
     >
       <div className="space-y-6">
+        {formError && (
+          <Card>
+            <CardContent className="py-4 text-sm text-destructive">{formError}</CardContent>
+          </Card>
+        )}
         {submitted || updated ? (
           <Card>
             <CardContent className="py-4 text-sm text-muted">

@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { ProviderCard } from "@/components/app/provider-card";
 import { SectionHeading } from "@/components/app/section-heading";
 import { StatCard } from "@/components/app/stat-card";
+import { WalletChat } from "@/components/app/wallet-chat";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +58,7 @@ export default async function WalletDashboardPage({
           </div>
         )}
 
+        <div className="grid gap-8 xl:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           {/* Primary CTA */}
           {primaryRoute && (
@@ -209,6 +211,20 @@ export default async function WalletDashboardPage({
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Assistant sidebar */}
+        <aside className="hidden xl:block">
+          <div className="sticky top-6 h-[calc(100vh-8rem)] rounded-xl border border-white/10 bg-black/20 p-5 flex flex-col">
+            <div className="mb-4 flex-shrink-0">
+              <div className="text-xs uppercase tracking-[0.16em] text-muted mb-1">Website assistant</div>
+              <p className="text-sm font-medium">Ask anything about your website</p>
+            </div>
+            <div className="flex-1 min-h-0">
+              <WalletChat walletId={walletId} />
+            </div>
+          </div>
+        </aside>
+        </div>
       </AppShell>
     );
   }
@@ -338,6 +354,19 @@ export default async function WalletDashboardPage({
             )}
           </div>
         </div>
+
+        {/* AI Assistant panel */}
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Ask the wallet assistant</CardTitle>
+              <CardDescription>Ask about setup status, billing, providers, or anything about this wallet.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent style={{ height: "380px" }}>
+            <WalletChat walletId={walletId} />
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card>

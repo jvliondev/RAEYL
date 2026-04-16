@@ -15,10 +15,10 @@ export default async function NewProviderPage({
   searchParams
 }: {
   params: Promise<{ walletId: string }>;
-  searchParams: Promise<{ websiteId?: string; template?: string }>;
+  searchParams: Promise<{ websiteId?: string; template?: string; formError?: string }>;
 }) {
   const { walletId } = await params;
-  const { websiteId, template: templateSlug } = await searchParams;
+  const { websiteId, template: templateSlug, formError } = await searchParams;
   const session = await requireSession();
   const { walletContext, websites } = await getWalletFormData(walletId, session.user.id);
 
@@ -82,6 +82,7 @@ export default async function NewProviderPage({
       ) : (
         // CONNECT FORM (pre-filled from template or custom)
         <form action={createProviderConnection} className="grid gap-6 xl:grid-cols-[1fr_320px]">
+          {formError && <p className="md:col-span-2 text-sm text-destructive">{formError}</p>}
           <input type="hidden" name="walletId" value={walletContext.id} />
           {selectedTemplate.slug !== "custom" && (
             <input type="hidden" name="providerTemplateSlug" value={selectedTemplate.slug} />

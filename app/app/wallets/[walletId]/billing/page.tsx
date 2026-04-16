@@ -83,6 +83,7 @@ export default async function BillingPage({
     ? hasCapability(walletContext.role, "billing.write")
     : false;
   const statusMessage = billingMessage(resolvedSearchParams);
+  const formError = typeof resolvedSearchParams.formError === "string" ? resolvedSearchParams.formError : null;
 
   return (
     <AppShell
@@ -91,6 +92,11 @@ export default async function BillingPage({
       walletContext={walletContext}
     >
       <div className="space-y-6">
+        {formError && (
+          <Card>
+            <CardContent className="py-4 text-sm text-destructive">{formError}</CardContent>
+          </Card>
+        )}
         {statusMessage ? (
           <Card>
             <CardContent className="py-4 text-sm text-muted">{statusMessage}</CardContent>

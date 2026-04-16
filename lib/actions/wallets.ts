@@ -120,8 +120,9 @@ export async function createWallet(
 export async function createWebsite(formData: FormData) {
   const session = await requireSession();
 
-  const parsed = websiteCreateSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const result = websiteCreateSchema.safeParse({
+    walletId,
     name: formData.get("name"),
     primaryDomain: formData.get("primaryDomain") || undefined,
     productionUrl: formData.get("productionUrl") || undefined,
@@ -132,6 +133,11 @@ export async function createWebsite(formData: FormData) {
     ownerNotes: formData.get("ownerNotes") || undefined,
     developerNotes: formData.get("developerNotes") || undefined
   });
+  if (!result.success) {
+    const msg = result.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/websites/new?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = result.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "website.write");
 
@@ -165,8 +171,9 @@ export async function createWebsite(formData: FormData) {
 export async function createProviderConnection(formData: FormData) {
   const session = await requireSession();
 
-  const parsed = providerConnectionSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const connResult = providerConnectionSchema.safeParse({
+    walletId,
     websiteId: formData.get("websiteId") || undefined,
     providerName: formData.get("providerName"),
     displayLabel: formData.get("displayLabel") || undefined,
@@ -184,6 +191,11 @@ export async function createProviderConnection(formData: FormData) {
       : undefined,
     renewalDate: formData.get("renewalDate") || undefined
   });
+  if (!connResult.success) {
+    const msg = connResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/providers/new?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = connResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "provider.write");
 
@@ -228,8 +240,9 @@ export async function createProviderConnection(formData: FormData) {
 export async function createOwnerInvite(formData: FormData) {
   const session = await requireSession();
 
-  const parsed = inviteCreateSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const inviteResult = inviteCreateSchema.safeParse({
+    walletId,
     email: formData.get("email"),
     role: "WALLET_OWNER",
     inviteType: "OWNER_HANDOFF",
@@ -238,6 +251,11 @@ export async function createOwnerInvite(formData: FormData) {
       welcomeNote: String(formData.get("welcomeNote") ?? "").trim()
     }
   });
+  if (!inviteResult.success) {
+    const msg = inviteResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/handoff?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = inviteResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "handoff.manage");
 
@@ -339,13 +357,18 @@ export async function createOwnerInvite(formData: FormData) {
 
 export async function createReferralAttribution(formData: FormData) {
   const session = await requireSession();
-  const parsed = referralSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const refResult = referralSchema.safeParse({
+    walletId,
     partnerAccountId: formData.get("partnerAccountId"),
     commissionRateBps: Number(formData.get("commissionRateBps")),
     attributionSource: formData.get("attributionSource") || undefined,
     commissionWindowEnds: formData.get("commissionWindowEnds") || undefined
   });
+  if (!refResult.success) {
+    redirect(`/app/wallets/${walletId}?formError=${encodeURIComponent(refResult.error.errors[0]?.message ?? "Invalid input.")}`);
+  }
+  const parsed = refResult.data;
 
   await requireWalletRole(parsed.walletId, session.user.id, [
     "PLATFORM_ADMIN",
@@ -378,8 +401,9 @@ export async function createReferralAttribution(formData: FormData) {
 
 export async function createBillingRecord(formData: FormData) {
   const session = await requireSession();
-  const parsed = billingRecordSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const billingResult = billingRecordSchema.safeParse({
+    walletId,
     providerConnectionId: formData.get("providerConnectionId") || undefined,
     sourceType: formData.get("sourceType"),
     label: formData.get("label"),
@@ -394,6 +418,11 @@ export async function createBillingRecord(formData: FormData) {
     renewalDate: formData.get("renewalDate") || undefined,
     isOwnerManaged: formData.get("isOwnerManaged") !== "false"
   });
+  if (!billingResult.success) {
+    const msg = billingResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/billing?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = billingResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "billing.write");
 
@@ -424,9 +453,10 @@ export async function createBillingRecord(formData: FormData) {
 
 export async function updateBillingRecord(formData: FormData) {
   const session = await requireSession();
-  const parsed = billingRecordUpdateSchema.parse({
+  const walletId = String(formData.get("walletId") ?? "");
+  const updateBillingResult = billingRecordUpdateSchema.safeParse({
     id: formData.get("id"),
-    walletId: formData.get("walletId"),
+    walletId,
     providerConnectionId: formData.get("providerConnectionId") || undefined,
     sourceType: formData.get("sourceType"),
     label: formData.get("label"),
@@ -441,6 +471,11 @@ export async function updateBillingRecord(formData: FormData) {
     renewalDate: formData.get("renewalDate") || undefined,
     isOwnerManaged: formData.get("isOwnerManaged") !== "false"
   });
+  if (!updateBillingResult.success) {
+    const msg = updateBillingResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/billing?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = updateBillingResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "billing.write");
 
@@ -497,10 +532,15 @@ export async function updateBillingRecord(formData: FormData) {
 
 export async function deleteBillingRecord(formData: FormData) {
   const session = await requireSession();
-  const parsed = billingRecordDeleteSchema.parse({
+  const walletId = String(formData.get("walletId") ?? "");
+  const delBillingResult = billingRecordDeleteSchema.safeParse({
     id: formData.get("id"),
-    walletId: formData.get("walletId")
+    walletId
   });
+  if (!delBillingResult.success) {
+    redirect(`/app/wallets/${walletId}/billing?formError=${encodeURIComponent(delBillingResult.error.errors[0]?.message ?? "Invalid input.")}`);
+  }
+  const parsed = delBillingResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "billing.write");
 
@@ -554,14 +594,20 @@ export async function openBillingPortal(formData: FormData) {
 
 export async function submitSupportRequest(formData: FormData) {
   const session = await requireSession();
-  const parsed = supportRequestSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const supportResult = supportRequestSchema.safeParse({
+    walletId,
     providerConnectionId: formData.get("providerConnectionId") || undefined,
     subject: formData.get("subject"),
     category: formData.get("category"),
     priority: formData.get("priority") || "NORMAL",
     description: formData.get("description")
   });
+  if (!supportResult.success) {
+    const msg = supportResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/support?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = supportResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "support.write");
 
@@ -579,11 +625,16 @@ export async function submitSupportRequest(formData: FormData) {
 
 export async function updateAccountSettings(formData: FormData) {
   const session = await requireSession();
-  const parsed = accountSettingsSchema.parse({
+  const accountResult = accountSettingsSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone") || undefined
   });
+  if (!accountResult.success) {
+    const msg = accountResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/settings/account?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = accountResult.data;
 
   await prisma.user.update({
     where: { id: session.user.id },
@@ -608,12 +659,18 @@ export async function updateAccountSettings(formData: FormData) {
 
 export async function updateWalletSettings(formData: FormData) {
   const session = await requireSession();
-  const parsed = walletSettingsUpdateSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const walletSettingsResult = walletSettingsUpdateSchema.safeParse({
+    walletId,
     businessName: formData.get("businessName"),
     websiteUrl: formData.get("websiteUrl") || undefined,
     notes: formData.get("notes") || undefined
   });
+  if (!walletSettingsResult.success) {
+    const msg = walletSettingsResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/settings?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = walletSettingsResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "settings.write");
 
@@ -753,9 +810,11 @@ export async function acceptInvite(token: string) {
 export async function createEditRoute(formData: FormData) {
   const session = await requireSession();
 
-  const parsed = editRouteSchema.parse({
-    walletId: formData.get("walletId"),
-    websiteId: formData.get("websiteId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const websiteId = String(formData.get("websiteId") ?? "");
+  const routeResult = editRouteSchema.safeParse({
+    walletId,
+    websiteId,
     providerId: formData.get("providerId") || undefined,
     label: formData.get("label"),
     description: formData.get("description") || undefined,
@@ -766,6 +825,11 @@ export async function createEditRoute(formData: FormData) {
     sortOrder: Number(formData.get("sortOrder") ?? 0),
     isEnabled: true
   });
+  if (!routeResult.success) {
+    const msg = routeResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/websites/${websiteId}/routes/new?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = routeResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "website.write");
   await requireWebsiteInWallet(parsed.walletId, parsed.websiteId);
@@ -843,13 +907,19 @@ export async function deleteEditRoute(formData: FormData) {
 export async function inviteTeamMember(formData: FormData) {
   const session = await requireSession();
 
-  const parsed = inviteCreateSchema.parse({
-    walletId: formData.get("walletId"),
+  const walletId = String(formData.get("walletId") ?? "");
+  const teamInviteResult = inviteCreateSchema.safeParse({
+    walletId,
     email: formData.get("email"),
     role: formData.get("role"),
     inviteType: "WALLET_MEMBER",
     expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
   });
+  if (!teamInviteResult.success) {
+    const msg = teamInviteResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`/app/wallets/${walletId}/access/invite?formError=${encodeURIComponent(msg)}`);
+  }
+  const parsed = teamInviteResult.data;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "access.manage");
 

@@ -22,6 +22,7 @@ export default async function WalletSettingsPage({
   const { walletContext, wallet } = await getWalletSettingsData(walletId, session.user.id);
   const resolvedSearchParams = await searchParams;
   const updated = typeof resolvedSearchParams.updated === "string";
+  const formError = typeof resolvedSearchParams.formError === "string" ? resolvedSearchParams.formError : null;
 
   return (
     <AppShell
@@ -30,6 +31,11 @@ export default async function WalletSettingsPage({
       walletContext={walletContext}
     >
       <div className="max-w-4xl space-y-6">
+        {formError && (
+          <Card>
+            <CardContent className="py-4 text-sm text-destructive">{formError}</CardContent>
+          </Card>
+        )}
         {updated ? (
           <Card>
             <CardContent className="py-4 text-sm text-muted">Your wallet settings were updated.</CardContent>

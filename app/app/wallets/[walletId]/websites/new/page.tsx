@@ -9,11 +9,15 @@ import { requireSession } from "@/lib/auth/access";
 import { getWalletFormData } from "@/lib/data/wallets";
 
 export default async function NewWebsitePage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ walletId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { walletId } = await params;
+  const sp = await searchParams;
+  const formError = typeof sp.formError === "string" ? sp.formError : null;
   const session = await requireSession();
   const { walletContext } = await getWalletFormData(walletId, session.user.id);
 
@@ -24,6 +28,7 @@ export default async function NewWebsitePage({
       walletContext={walletContext}
     >
       <form action={createWebsite} className="max-w-5xl space-y-6">
+        {formError && <p className="text-sm text-destructive">{formError}</p>}
         <input type="hidden" name="walletId" value={walletContext.id} />
         <Card>
           <CardHeader>

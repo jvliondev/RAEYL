@@ -9,11 +9,15 @@ import { requireSession } from "@/lib/auth/access";
 import { getWalletAccessData } from "@/lib/data/wallets";
 
 export default async function InviteTeammatePage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ walletId: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { walletId } = await params;
+  const sp = await searchParams;
+  const formError = typeof sp.formError === "string" ? sp.formError : null;
   const session = await requireSession();
   const { walletContext } = await getWalletAccessData(walletId, session.user.id);
 
@@ -25,6 +29,7 @@ export default async function InviteTeammatePage({
     >
       <div className="max-w-lg">
         <form action={inviteTeamMember} className="space-y-6">
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
           <input type="hidden" name="walletId" value={walletId} />
           <Card>
             <CardHeader>
