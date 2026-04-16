@@ -13,28 +13,42 @@ html {
 body {
   @apply bg-background text-foreground antialiased;
   background-image:
-    radial-gradient(circle at top, rgba(75, 212, 247, 0.12), transparent 28%),
-    radial-gradient(circle at 20% 20%, rgba(109, 242, 194, 0.1), transparent 20%),
-    linear-gradient(180deg, #071211 0%, #061111 100%);
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(139, 92, 246, 0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 80%, rgba(34, 211, 238, 0.07), transparent),
+    radial-gradient(ellipse 50% 30% at 0% 60%, rgba(109, 40, 217, 0.08), transparent);
 }
 
 * {
   @apply border-border;
 }
 
+/* ── Surfaces ─────────────────────────────────────────── */
 .surface {
-  @apply border border-white/10 bg-white/[0.03] backdrop-blur-xl;
+  @apply border border-white/[0.07] bg-white/[0.025] backdrop-blur-xl;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.03),
-    0 18px 50px rgba(0,0,0,0.18);
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 18px 50px rgba(0,0,0,0.28);
 }
 
+.surface-elevated {
+  @apply border border-white/[0.1] bg-white/[0.04] backdrop-blur-xl;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 24px 60px rgba(0,0,0,0.35);
+}
+
+/* ── Layout ───────────────────────────────────────────── */
 .page-shell {
   @apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8;
 }
 
+/* ── Typography utilities ─────────────────────────────── */
 .eyebrow {
-  @apply text-xs font-medium uppercase tracking-[0.18em] text-primary/80;
+  @apply text-xs font-semibold uppercase tracking-[0.2em] text-primary/80;
+}
+
+.gradient-text {
+  @apply bg-gradient-to-r from-violet-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent;
 }
 
 .panel-title {
@@ -46,5 +60,20 @@ body {
 }
 
 .soft-divider {
-  @apply border-t border-white/5;
+  @apply border-t border-white/[0.05];
+}
+
+/* ── Glow effects ─────────────────────────────────────── */
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(139,92,246,0.3), 0 0 20px rgba(139,92,246,0.15);
+}
+
+.glow-ring-cyan {
+  box-shadow: 0 0 0 1px rgba(34,211,238,0.3), 0 0 20px rgba(34,211,238,0.12);
+}
+
+/* ── Grid overlay ─────────────────────────────────────── */
+.bg-dot-grid {
+  background-image: radial-gradient(circle, rgba(139,92,246,0.12) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
