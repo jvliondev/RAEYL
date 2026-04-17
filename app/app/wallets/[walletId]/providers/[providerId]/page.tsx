@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DeleteProviderButton } from "@/components/app/delete-provider-button";
 import { requireSession } from "@/lib/auth/access";
 import { hasCapability } from "@/lib/auth/permissions";
-import { deleteProviderConnection } from "@/lib/actions/wallets";
 import { getWalletProviderDetailData } from "@/lib/data/wallets";
 import { detectCMSProvider } from "@/lib/services/cms-service";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -182,23 +182,11 @@ export default async function ProviderDetailPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form action={deleteProviderConnection}>
-                  <input type="hidden" name="walletId" value={walletId} />
-                  <input type="hidden" name="providerId" value={providerId} />
-                  <Button
-                    type="submit"
-                    variant="danger"
-                    className="gap-2"
-                    onClick={(e) => {
-                      if (!confirm(`Remove "${provider.label}" from this wallet?`)) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Remove tool
-                  </Button>
-                </form>
+                <DeleteProviderButton
+                  walletId={walletId}
+                  providerId={providerId}
+                  label={provider.label}
+                />
               </CardContent>
             </Card>
           )}
