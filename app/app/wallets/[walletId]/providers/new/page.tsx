@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { createProviderConnection } from "@/lib/actions/wallets";
 import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +43,15 @@ export default async function NewProviderPage({
       }
       walletContext={walletContext}
     >
+      <div className="mb-6">
+        <Link
+          href={`/app/wallets/${walletContext.id}/providers`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back to connected tools
+        </Link>
+      </div>
       {!selectedTemplate ? (
         // CATALOG PICKER
         <div className="space-y-8">

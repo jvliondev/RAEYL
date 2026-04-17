@@ -26,25 +26,37 @@ const pillars = [
     icon: Globe,
     title: "Stop the Chaos",
     description:
-      "No more scattered links, forgotten credentials, and mystery costs. Every tool, provider, and billing seat in one clean place."
+      "No more scattered links, forgotten credentials, and mystery costs. Every tool, provider, and billing seat in one clean place.",
+    cardClass: "card-accent-purple",
+    iconClass: "text-violet-400",
+    iconBgClass: "border-violet-500/25 bg-violet-500/[0.07]"
   },
   {
     icon: FileText,
     title: "See Everything Clearly",
     description:
-      "Your website's full picture — what it costs, what's connected, what needs attention — explained in plain language."
+      "Your website's full picture — what it costs, what's connected, what needs attention — explained in plain language.",
+    cardClass: "card-accent-cyan",
+    iconClass: "text-cyan-400",
+    iconBgClass: "border-cyan-500/25 bg-cyan-500/[0.07]"
   },
   {
     icon: Zap,
     title: "Take Action with Confidence",
     description:
-      "Open the right tool, update the right setting, or reach the right person — without needing a developer on call."
+      "Open the right tool, update the right setting, or reach the right person — without needing a developer on call.",
+    cardClass: "card-accent-amber",
+    iconClass: "text-amber-400",
+    iconBgClass: "border-amber-500/25 bg-amber-500/[0.07]"
   },
   {
     icon: Shield,
     title: "Hand Off with Peace of Mind",
     description:
-      "Developers deliver a complete, organized ownership experience — not a Notion doc and a prayer."
+      "Developers deliver a complete, organized ownership experience — not a Notion doc and a prayer.",
+    cardClass: "card-accent-emerald",
+    iconClass: "text-emerald-400",
+    iconBgClass: "border-emerald-500/25 bg-emerald-500/[0.07]"
   }
 ];
 
@@ -54,38 +66,50 @@ const steps = [
     icon: Code2,
     title: "Developer Sets It Up",
     description:
-      "Your developer or agency connects your providers, configures the wallet, and prepares your ownership handoff before they leave."
+      "Your developer or agency connects your providers, configures the wallet, and prepares your ownership handoff before they leave.",
+    numClass: "text-violet-500/50",
+    iconClass: "text-violet-400",
+    iconBgClass: "border-violet-500/25 bg-violet-500/[0.07]"
   },
   {
     n: "02",
     icon: UserCheck,
     title: "Owner Gets Invited",
     description:
-      "You receive one secure invite link. One click, and the wallet is yours — no technical knowledge required."
+      "You receive one secure invite link. One click, and the wallet is yours — no technical knowledge required.",
+    numClass: "text-cyan-500/50",
+    iconClass: "text-cyan-400",
+    iconBgClass: "border-cyan-500/25 bg-cyan-500/[0.07]"
   },
   {
     n: "03",
     icon: FileText,
     title: "Everything Appears in One Place",
     description:
-      "Hosting, CMS, billing, domains, access, and alerts. Organized, labeled, and ready to act on."
+      "Hosting, CMS, billing, domains, access, and alerts. Organized, labeled, and ready to act on.",
+    numClass: "text-amber-500/50",
+    iconClass: "text-amber-400",
+    iconBgClass: "border-amber-500/25 bg-amber-500/[0.07]"
   },
   {
     n: "04",
     icon: Wallet,
     title: "Manage with Confidence",
     description:
-      "Update content, control access, track costs, request support — all from a single executive dashboard."
+      "Update content, control access, track costs, request support — all from a single executive dashboard.",
+    numClass: "text-emerald-500/50",
+    iconClass: "text-emerald-400",
+    iconBgClass: "border-emerald-500/25 bg-emerald-500/[0.07]"
   }
 ];
 
 const features = [
-  { icon: Globe,      label: "Provider Tracking" },
-  { icon: Wallet,     label: "Billing Visibility" },
-  { icon: UserCheck,  label: "Team Access Control" },
-  { icon: Lock,       label: "Credential Storage" },
-  { icon: FileText,   label: "Edit Routing" },
-  { icon: RefreshCw,  label: "Handoff History" }
+  { icon: Globe,      label: "Provider Tracking",    iconClass: "text-violet-400" },
+  { icon: Wallet,     label: "Billing Visibility",   iconClass: "text-cyan-400"   },
+  { icon: UserCheck,  label: "Team Access Control",  iconClass: "text-emerald-400" },
+  { icon: Lock,       label: "Credential Storage",   iconClass: "text-amber-400"  },
+  { icon: FileText,   label: "Edit Routing",         iconClass: "text-violet-400" },
+  { icon: RefreshCw,  label: "Handoff History",      iconClass: "text-cyan-400"   }
 ];
 
 /* ─────────────────────────────────────────────
@@ -254,19 +278,20 @@ export default function HomePage() {
                 <br />
                 <span className="silver-text">Finally Organized.</span>
               </h2>
+              <div className="velocity-line" />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {pillars.map((p, i) => (
                 <div
                   key={p.title}
-                  className={`surface hover-lift animate-in rounded-2xl p-6 delay-${i}`}
+                  className={`surface ${p.cardClass} hover-lift animate-in rounded-2xl p-6 delay-${i}`}
                 >
-                  <div className="mb-5 inline-flex rounded-xl border border-white/[0.07] bg-white/[0.03] p-3">
-                    <p.icon className="h-5 w-5 text-white/50" strokeWidth={1.5} />
+                  <div className={`mb-5 inline-flex rounded-xl border p-3 ${p.iconBgClass}`}>
+                    <p.icon className={`h-5 w-5 ${p.iconClass}`} strokeWidth={1.5} />
                   </div>
-                  <h3 className="mb-2 font-semibold text-white/80">{p.title}</h3>
-                  <p className="text-sm leading-6 text-white/35">{p.description}</p>
+                  <h3 className="mb-2 font-semibold text-white/90">{p.title}</h3>
+                  <p className="text-sm leading-6 text-white/45">{p.description}</p>
                 </div>
               ))}
             </div>
@@ -288,6 +313,7 @@ export default function HomePage() {
                 <br />
                 <span className="silver-text">in Four Steps.</span>
               </h2>
+              <div className="velocity-line mx-auto" />
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -297,15 +323,15 @@ export default function HomePage() {
                   className={`surface animate-in rounded-2xl p-6 delay-${i}`}
                 >
                   <div className="mb-5 flex items-start justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.07] bg-white/[0.03]">
-                      <s.icon className="h-4.5 w-4.5 text-white/50" strokeWidth={1.5} />
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl border p-2.5 ${s.iconBgClass}`}>
+                      <s.icon className={`h-4 w-4 ${s.iconClass}`} strokeWidth={1.5} />
                     </div>
-                    <span className="font-display text-3xl font-bold text-white/[0.07]">
+                    <span className={`font-display text-3xl font-bold ${s.numClass}`}>
                       {s.n}
                     </span>
                   </div>
-                  <h3 className="mb-2 font-semibold text-white/80">{s.title}</h3>
-                  <p className="text-sm leading-6 text-white/35">{s.description}</p>
+                  <h3 className="mb-2 font-semibold text-white/90">{s.title}</h3>
+                  <p className="text-sm leading-6 text-white/45">{s.description}</p>
                 </div>
               ))}
             </div>
@@ -326,7 +352,8 @@ export default function HomePage() {
                 <br />
                 <span className="silver-text">for Every Website.</span>
               </h2>
-              <p className="mt-4 text-base leading-7 text-white/40">
+              <div className="velocity-line" />
+              <p className="mt-5 text-base leading-7 text-white/50">
                 Every provider, every cost, every alert — surfaced in one calm,
                 premium interface built for the owner, not the developer.
               </p>
@@ -380,8 +407,8 @@ export default function HomePage() {
                         key={f.label}
                         className="flex items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 transition-colors hover:border-white/[0.1] hover:bg-white/[0.04]"
                       >
-                        <f.icon className="h-4 w-4 flex-shrink-0 text-white/40" strokeWidth={1.5} />
-                        <span className="text-sm font-medium text-white/55">{f.label}</span>
+                        <f.icon className={`h-4 w-4 flex-shrink-0 ${f.iconClass}`} strokeWidth={1.5} />
+                        <span className="text-sm font-medium text-white/70">{f.label}</span>
                       </div>
                     ))}
                   </div>

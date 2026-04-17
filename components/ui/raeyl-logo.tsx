@@ -1,15 +1,13 @@
 import { cn } from "@/lib/utils";
 
 /**
- * RaeylMark
- * Precision-machined titanium "R" symbol.
+ * RaeylMark — matches the provided brand logo.
  *
- * Light model: source at upper-left ~40°.
- *   – Main face:  bright silver (upper-left) → mid graphite → deep shadow (lower-right) → subtle bounce-light
- *   – Chrome lip: thin bright edge along the lit side
- *   – Cool tint:  faint blue-white reflection on the inner ribbon (steel in shade)
- *   – Counter:    recessed dark cavity with subtle gradient
- *   – Shadow:     blurred cast shadow behind the form
+ * 3-layer ribbon R:
+ *   Layer 1 (back):  dark navy depth shadow, offset to create dimension
+ *   Layer 2 (main):  purple/violet gradient — the primary visible face
+ *   Layer 3 (front): cyan/teal inner strip — bright accent along the inner curve
+ *   + inner counter: recessed dark cavity in the bowl of the R
  */
 export function RaeylMark({ className }: { className?: string }) {
   return (
@@ -21,134 +19,82 @@ export function RaeylMark({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <defs>
-        {/* ── Main face: light from upper-left, shadow lower-right, bounce light ── */}
+        {/* Purple/violet main face — light from upper-left */}
         <linearGradient
-          id="rm-face"
+          id="rl-purple"
           x1="15" y1="10"
           x2="115" y2="165"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%"   stopColor="#d8d8d8" />
-          <stop offset="22%"  stopColor="#a0a0a0" />
-          <stop offset="55%"  stopColor="#3c3c3c" />
-          <stop offset="80%"  stopColor="#525252" /> {/* bounce light */}
-          <stop offset="100%" stopColor="#1c1c1c" />
+          <stop offset="0%"   stopColor="#c084fc" />
+          <stop offset="40%"  stopColor="#8b5cf6" />
+          <stop offset="100%" stopColor="#5b21b6" />
         </linearGradient>
 
-        {/* ── Chrome lip: bright highlight on the lit left/top edge ── */}
+        {/* Cyan inner ribbon */}
         <linearGradient
-          id="rm-chrome"
-          x1="15" y1="10"
-          x2="45" y2="162"
+          id="rl-cyan"
+          x1="15" y1="165"
+          x2="90"  y2="10"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%"   stopColor="#f4f4f4" />
-          <stop offset="35%"  stopColor="#d0d0d0" />
-          <stop offset="70%"  stopColor="#707070" />
-          <stop offset="100%" stopColor="#303030" stopOpacity="0" />
+          <stop offset="0%"   stopColor="#06b6d4" />
+          <stop offset="100%" stopColor="#67e8f9" />
         </linearGradient>
 
-        {/* ── Cool tint: the inner ribbon reads as steel in shade ── */}
+        {/* Dark navy inner counter */}
         <linearGradient
-          id="rm-cool"
-          x1="15" y1="162"
-          x2="90" y2="10"
+          id="rl-navy"
+          x1="95" y1="25"
+          x2="38"  y2="90"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0%"   stopColor="#7aaeff" stopOpacity="0.22" />
-          <stop offset="60%"  stopColor="#b8d0ff" stopOpacity="0.14" />
-          <stop offset="100%" stopColor="#dceeff" stopOpacity="0.05" />
+          <stop offset="0%"   stopColor="#0f0e2a" />
+          <stop offset="100%" stopColor="#1e1b4b" />
         </linearGradient>
-
-        {/* ── Counter cavity ── */}
-        <linearGradient
-          id="rm-counter"
-          x1="95" y1="30"
-          x2="38" y2="90"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%"   stopColor="#040404" />
-          <stop offset="100%" stopColor="#1a1a1a" />
-        </linearGradient>
-
-        {/* ── Specular hotspot (small oval at the top-left corner) ── */}
-        <radialGradient
-          id="rm-spec"
-          cx="28" cy="18"
-          r="22"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%"   stopColor="#ffffff" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-        </radialGradient>
-
-        {/* ── Drop-shadow filter ── */}
-        <filter id="rm-shadow" x="-25%" y="-15%" width="150%" height="140%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="6" result="blur" />
-          <feOffset dx="5" dy="8" result="offsetBlur" />
-          <feComposite in="offsetBlur" in2="SourceAlpha" operator="out" result="shadow" />
-          <feFlood floodColor="#000000" floodOpacity="0.7" result="color" />
-          <feComposite in="color" in2="shadow" operator="in" result="coloredShadow" />
-          <feMerge>
-            <feMergeNode in="coloredShadow" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
 
-      {/* ── Render group with drop shadow ── */}
-      <g filter="url(#rm-shadow)">
+      {/* ── Layer 1: Navy depth shadow (offset back) ── */}
+      <path
+        d="M 18 158 L 18 14 L 68 14
+           C 102 14 120 35 116 63
+           C 113 86  97 101 75 105
+           L 116 158 L 89 158
+           L 53 107  L 40 107
+           L 40 158 Z"
+        fill="#1e1b4b"
+        transform="translate(5 6)"
+        opacity="0.85"
+      />
 
-        {/* 1. Main R body — metallic face gradient */}
-        <path
-          d="M 18 158 L 18 14 L 68 14
-             C 102 14 120 35 116 63
-             C 113 86  97 101 75 105
-             L 116 158 L 89 158
-             L 53 107  L 40 107
-             L 40 158 Z"
-          fill="url(#rm-face)"
-        />
+      {/* ── Layer 2: Purple main body ── */}
+      <path
+        d="M 18 158 L 18 14 L 68 14
+           C 102 14 120 35 116 63
+           C 113 86  97 101 75 105
+           L 116 158 L 89 158
+           L 53 107  L 40 107
+           L 40 158 Z"
+        fill="url(#rl-purple)"
+      />
 
-        {/* 2. Inner counter — recessed dark cavity */}
-        <path
-          d="M 40 32 L 40 89
-             C 60 94  90 88  95 63
-             C 100 37  68 30  40 32 Z"
-          fill="url(#rm-counter)"
-        />
+      {/* ── Inner counter (the bowl of R) ── */}
+      <path
+        d="M 40 32 L 40 89
+           C 60 94  90 88  95 63
+           C 100 37  68 30  40 32 Z"
+        fill="url(#rl-navy)"
+      />
 
-        {/* 3. Chrome lip — thin bright strip on lit left/inner edge */}
-        <path
-          d="M 14 14 C 18 8 26 8 34 11
-             L 34 108 L 72 158 L 90 158
-             L 52 108 L 52 13
-             C 42 10 16 10 14 14 Z"
-          fill="url(#rm-chrome)"
-          opacity="0.92"
-        />
-
-        {/* 4. Cool tint overlay on the chrome strip */}
-        <path
-          d="M 14 14 C 18 8 26 8 34 11
-             L 34 108 L 72 158 L 90 158
-             L 52 108 L 52 13
-             C 42 10 16 10 14 14 Z"
-          fill="url(#rm-cool)"
-        />
-
-        {/* 5. Specular hotspot — top-left corner brightest point */}
-        <path
-          d="M 18 14 L 68 14
-             C 102 14 120 35 116 63
-             C 113 86  97 101 75 105
-             L 116 158 L 89 158
-             L 53 107  L 40 107
-             L 40 158  L 18 158 Z"
-          fill="url(#rm-spec)"
-        />
-
-      </g>
+      {/* ── Layer 3: Cyan inner ribbon strip ── */}
+      <path
+        d="M 14 14 C 18 8 26 8 34 11
+           L 34 108 L 72 158 L 90 158
+           L 52 108 L 52 13
+           C 42 10 16 10 14 14 Z"
+        fill="url(#rl-cyan)"
+        opacity="0.9"
+      />
     </svg>
   );
 }

@@ -13,6 +13,8 @@ import {
   Siren,
   Workflow
 } from "lucide-react";
+import { WalletChat } from "@/components/app/wallet-chat";
+import { RaeylLogo } from "@/components/ui/raeyl-logo";
 
 import { logOut } from "@/lib/actions/auth";
 
@@ -121,8 +123,8 @@ export async function AppShell({
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="hidden border-r border-white/5 bg-black/10 lg:block">
           <div className="sticky top-0 flex min-h-screen flex-col p-5">
-            <Link href="/" className="mb-8 text-sm font-semibold tracking-[0.22em] text-foreground">
-              RAEYL
+            <Link href="/" className="mb-8">
+              <RaeylLogo markClassName="h-5" />
             </Link>
             {wallet.id ? (
               <div className="mb-6 rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -209,6 +211,18 @@ export async function AppShell({
                       <div className="text-xs text-muted">{item.role}</div>
                     </Link>
                   ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* AI assistant — pinned to sidebar bottom */}
+            {wallet.id ? (
+              <div className="soft-divider mt-auto pt-4">
+                <div className="mb-2 px-1 text-xs uppercase tracking-[0.16em] text-muted">
+                  Website assistant
+                </div>
+                <div className="h-72 overflow-hidden rounded-lg border border-white/[0.06] bg-black/20">
+                  <WalletChat walletId={wallet.id} compact />
                 </div>
               </div>
             ) : null}

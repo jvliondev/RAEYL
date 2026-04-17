@@ -150,8 +150,12 @@ export function Hero() {
               >
                 <span className="block">OWN IT.</span>
                 <span className="block silver-text">UNDERSTAND IT.</span>
-                <span className="block text-white/25">CONTROL IT.</span>
+                <span className="block text-white/45">CONTROL IT.</span>
               </h1>
+              {/* Velocity streak — forward momentum under headline */}
+              <div className="pt-3">
+                <div className="h-px w-40 bg-gradient-to-r from-violet-500/70 via-cyan-500/40 to-transparent rounded-full" />
+              </div>
             </div>
 
             {/* Description */}
@@ -179,8 +183,8 @@ export function Hero() {
             <div className="animate-in delay-4 flex flex-wrap gap-5">
               {trust.map((t) => (
                 <div key={t} className="flex items-center gap-1.5">
-                  <Check className="h-3.5 w-3.5 text-white/25" />
-                  <span className="text-sm text-white/30">{t}</span>
+                  <Check className="h-3.5 w-3.5 text-emerald-400/60" />
+                  <span className="text-sm text-white/45">{t}</span>
                 </div>
               ))}
             </div>

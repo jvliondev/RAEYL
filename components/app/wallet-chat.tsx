@@ -52,7 +52,7 @@ function clearMessages(walletId: string) {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
-export function WalletChat({ walletId }: { walletId: string }) {
+export function WalletChat({ walletId, compact = false }: { walletId: string; compact?: boolean }) {
   const [messages, setMessages]         = useState<Message[]>([]);
   const [input, setInput]               = useState("");
   const [streaming, setStreaming]       = useState(false);

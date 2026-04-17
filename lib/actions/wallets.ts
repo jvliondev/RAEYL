@@ -904,6 +904,34 @@ export async function deleteEditRoute(formData: FormData) {
   redirect(`/app/wallets/${walletId}/websites/${websiteId}`);
 }
 
+export async function deleteProviderConnection(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+  const providerId = String(formData.get("providerId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "provider.write");
+
+  const provider = await prisma.providerConnection.findFirst({
+    where: { id: providerId, walletId }
+  });
+
+  if (!provider) throw new Error("Provider not found.");
+
+  await prisma.providerConnection.delete({ where: { id: providerId } });
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId,
+    entityType: "PROVIDER",
+    entityId: providerId,
+    action: "provider.deleted",
+    summary: `Provider "${provider.displayLabel ?? provider.providerName}" removed from wallet.`
+  });
+
+  redirect(`/app/wallets/${walletId}/providers`);
+}
+
 export async function inviteTeamMember(formData: FormData) {
   const session = await requireSession();
 
