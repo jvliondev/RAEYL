@@ -17,6 +17,8 @@ import { createInAppNotification } from "@/lib/services/notification-service";
 import { createBillingPortalSession, createCheckoutSession } from "@/lib/services/billing-service";
 import { createSupportRequest } from "@/lib/services/support-service";
 import { getHandoffReadiness } from "@/lib/services/handoff-state";
+import { storeProviderSecret } from "@/lib/services/provider-credentials";
+import { verifyProviderConnection } from "@/lib/services/provider-connection-service";
 import {
   accountSettingsSchema,
   billingRecordDeleteSchema,
@@ -180,6 +182,8 @@ export async function createProviderConnection(formData: FormData) {
     category: formData.get("category"),
     connectionMethod: formData.get("connectionMethod"),
     connectedAccountLabel: formData.get("connectedAccountLabel") || undefined,
+    externalProjectId: formData.get("externalProjectId") || undefined,
+    externalTeamId: formData.get("externalTeamId") || undefined,
     dashboardUrl: formData.get("dashboardUrl") || undefined,
     billingUrl: formData.get("billingUrl") || undefined,
     editUrl: formData.get("editUrl") || undefined,
@@ -196,6 +200,9 @@ export async function createProviderConnection(formData: FormData) {
     redirect(`/app/wallets/${walletId}/providers/new?formError=${encodeURIComponent(msg)}`);
   }
   const parsed = connResult.data;
+  const apiToken = String(formData.get("apiToken") ?? "").trim();
+  const secureCredential = String(formData.get("secureCredential") ?? "").trim();
+  const providerTemplateSlug = String(formData.get("providerTemplateSlug") ?? "").trim() || undefined;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "provider.write");
 
@@ -203,18 +210,79 @@ export async function createProviderConnection(formData: FormData) {
     await requireWebsiteInWallet(parsed.walletId, parsed.websiteId);
   }
 
-  const provider = await prisma.providerConnection.create({
-    data: {
-      ...parsed,
-      monthlyCostEstimate:
-        parsed.monthlyCostEstimate !== undefined
-          ? new Prisma.Decimal(parsed.monthlyCostEstimate)
-          : undefined,
-      status: parsed.connectionMethod === "MANUAL" ? "CONNECTED" : "PENDING_VERIFICATION",
-      syncState: parsed.connectionMethod === "MANUAL" ? "DISABLED" : "PENDING",
-      healthStatus: parsed.connectionMethod === "MANUAL" ? "UNKNOWN" : "ATTENTION_NEEDED",
-      createdById: session.user.id
+  const newProviderUrl = `/app/wallets/${walletId}/providers/new?template=${encodeURIComponent(providerTemplateSlug ?? "custom")}${parsed.websiteId ? `&websiteId=${encodeURIComponent(parsed.websiteId)}` : ""}`;
+
+  if (parsed.connectionMethod === "API_TOKEN" && !apiToken) {
+    redirect(`${newProviderUrl}&formError=${encodeURIComponent("Add an API token so RAEYL can verify and connect this tool.")}`);
+  }
+
+  if (parsed.connectionMethod === "SECURE_LINK" && !secureCredential) {
+    redirect(`${newProviderUrl}&formError=${encodeURIComponent("Add the secure credential or access code for this connection.")}`);
+  }
+
+  let verification;
+  try {
+    verification = await verifyProviderConnection({
+      providerName: parsed.providerName,
+      connectionMethod: parsed.connectionMethod,
+      apiToken: apiToken || undefined,
+      externalProjectId: parsed.externalProjectId,
+      externalTeamId: parsed.externalTeamId
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not verify this provider connection.";
+    redirect(`${newProviderUrl}&formError=${encodeURIComponent(message)}`);
+  }
+
+  const provider = await prisma.$transaction(async (tx) => {
+    const createdProvider = await tx.providerConnection.create({
+      data: {
+        ...parsed,
+        connectedAccountLabel: verification?.connectedAccountLabel ?? parsed.connectedAccountLabel,
+        externalProjectId: verification?.externalProjectId ?? parsed.externalProjectId,
+        externalTeamId: verification?.externalTeamId ?? parsed.externalTeamId,
+        dashboardUrl: verification?.dashboardUrl ?? parsed.dashboardUrl,
+        billingUrl: verification?.billingUrl ?? parsed.billingUrl,
+        editUrl: verification?.editUrl ?? parsed.editUrl,
+        tokenMetadata: verification?.tokenMetadata ?? undefined,
+        metadata: {
+          ...(parsed.metadata ?? {}),
+          ...(verification?.metadata ?? {}),
+          ...(providerTemplateSlug ? { providerTemplateSlug } : {})
+        },
+        notes: [parsed.notes, verification?.notes].filter(Boolean).join("\n\n") || undefined,
+        monthlyCostEstimate:
+          parsed.monthlyCostEstimate !== undefined
+            ? new Prisma.Decimal(parsed.monthlyCostEstimate)
+            : undefined,
+        status: verification?.status ?? (parsed.connectionMethod === "MANUAL" ? "CONNECTED" : "PENDING_VERIFICATION"),
+        syncState: verification?.syncState ?? (parsed.connectionMethod === "MANUAL" ? "DISABLED" : "PENDING"),
+        healthStatus: verification?.healthStatus ?? (parsed.connectionMethod === "MANUAL" ? "UNKNOWN" : "ATTENTION_NEEDED"),
+        lastSyncAt: verification?.lastSyncAt,
+        lastHealthCheckAt: verification?.lastHealthCheckAt,
+        createdById: session.user.id
+      }
+    });
+
+    if (apiToken) {
+      await storeProviderSecret(tx, {
+        providerConnectionId: createdProvider.id,
+        secretType: "API_KEY",
+        rawValue: apiToken,
+        createdById: session.user.id
+      });
     }
+
+    if (secureCredential) {
+      await storeProviderSecret(tx, {
+        providerConnectionId: createdProvider.id,
+        secretType: "SECURE_LINK_CREDENTIAL",
+        rawValue: secureCredential,
+        createdById: session.user.id
+      });
+    }
+
+    return createdProvider;
   });
 
   await prisma.wallet.update({

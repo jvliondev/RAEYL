@@ -1,16 +1,16 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { AppShell } from "@/components/app/app-shell";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DeleteProviderButton } from "@/components/app/delete-provider-button";
 import { requireSession } from "@/lib/auth/access";
 import { hasCapability } from "@/lib/auth/permissions";
 import { getWalletProviderDetailData } from "@/lib/data/wallets";
 import { detectCMSProvider } from "@/lib/services/cms-service";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { AppShell } from "@/components/app/app-shell";
+import { DeleteProviderButton } from "@/components/app/delete-provider-button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function ProviderDetailPage({
   params
@@ -26,9 +26,7 @@ export default async function ProviderDetailPage({
   );
 
   const isCMS = provider.category === "cms" || !!detectCMSProvider(provider.name);
-  const canManage = walletContext.role
-    ? hasCapability(walletContext.role, "provider.write")
-    : false;
+  const canManage = walletContext.role ? hasCapability(walletContext.role, "provider.write") : false;
 
   return (
     <AppShell
@@ -36,7 +34,6 @@ export default async function ProviderDetailPage({
       description={`${provider.ownerDescription} Powered by ${provider.name}.`}
       walletContext={walletContext}
     >
-      {/* Back nav */}
       <div className="mb-6">
         <Link
           href={`/app/wallets/${walletId}/providers`}
@@ -91,13 +88,13 @@ export default async function ProviderDetailPage({
                   </a>
                 </Button>
               ) : null}
-              {isCMS && (
+              {isCMS ? (
                 <Button asChild variant="secondary">
                   <Link href={`/app/wallets/${walletId}/providers/${providerId}/cms-setup`}>
                     Set up editing
                   </Link>
                 </Button>
-              )}
+              ) : null}
               {provider.supportUrl ? (
                 <Button asChild variant="ghost">
                   <a href={provider.supportUrl} target="_blank" rel="noopener noreferrer">
@@ -120,6 +117,49 @@ export default async function ProviderDetailPage({
               <p>Connected account: {provider.accountLabel}</p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Connection state</CardTitle>
+                <CardDescription>How this tool was connected and what RAEYL can verify today.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted">
+              <div>
+                <span className="text-foreground">Method:</span> {provider.connectionMethod ?? "Not recorded"}
+              </div>
+              <div>
+                <span className="text-foreground">Sync state:</span> {provider.syncState ?? "Unknown"}
+              </div>
+              <div>
+                <span className="text-foreground">Last health check:</span>{" "}
+                {provider.lastHealthCheckAt ? formatDate(provider.lastHealthCheckAt) : "Not checked yet"}
+              </div>
+              <div>
+                <span className="text-foreground">Last sync:</span>{" "}
+                {provider.lastSyncAt ? formatDate(provider.lastSyncAt) : "No sync recorded yet"}
+              </div>
+              {provider.credentials?.length ? (
+                <div className="pt-2">
+                  <div className="mb-2 font-medium text-foreground">Stored credentials</div>
+                  <div className="space-y-2">
+                    {provider.credentials.map((credential) => (
+                      <div key={credential.id} className="rounded-md border border-white/10 px-3 py-2">
+                        <div>{credential.type}</div>
+                        <div className="text-xs text-muted">
+                          {credential.maskedPreview} • {credential.status}
+                          {credential.expiresAt ? ` • Expires ${formatDate(credential.expiresAt)}` : ""}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>No encrypted credentials are stored for this tool yet.</div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -129,8 +169,7 @@ export default async function ProviderDetailPage({
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted">
               <div>
-                <span className="text-foreground">Estimated cost:</span>{" "}
-                {formatCurrency(provider.monthlyCost)}
+                <span className="text-foreground">Estimated cost:</span> {formatCurrency(provider.monthlyCost)}
               </div>
               <div>
                 <span className="text-foreground">Renewal date:</span>{" "}
@@ -172,8 +211,7 @@ export default async function ProviderDetailPage({
             </CardContent>
           </Card>
 
-          {/* Danger zone — remove tool */}
-          {canManage && (
+          {canManage ? (
             <Card className="border-destructive/20">
               <CardHeader>
                 <CardTitle className="text-destructive/80">Remove this tool</CardTitle>
@@ -182,14 +220,10 @@ export default async function ProviderDetailPage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <DeleteProviderButton
-                  walletId={walletId}
-                  providerId={providerId}
-                  label={provider.label}
-                />
+                <DeleteProviderButton walletId={walletId} providerId={providerId} label={provider.label} />
               </CardContent>
             </Card>
-          )}
+          ) : null}
         </div>
       </div>
     </AppShell>

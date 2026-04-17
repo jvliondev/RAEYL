@@ -111,3 +111,9 @@ export async function requireAdmin(userId: string) {
 
   return user;
 }
+
+export async function requireAdminSession() {
+  const session = await requireSession();
+  await requireAdmin(session.user.id);
+  return session;
+}

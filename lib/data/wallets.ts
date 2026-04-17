@@ -171,6 +171,8 @@ function mapProvider(provider: {
   connectedAccountLabel: string | null;
   status: ProviderStatus;
   healthStatus: string;
+  connectionMethod: string;
+  syncState: string;
   dashboardUrl: string | null;
   billingUrl: string | null;
   editUrl: string | null;
@@ -179,6 +181,8 @@ function mapProvider(provider: {
   metadata: Prisma.JsonValue | null;
   monthlyCostEstimate: Prisma.Decimal | null;
   renewalDate: Date | null;
+  lastSyncAt?: Date | null;
+  lastHealthCheckAt?: Date | null;
 }): ProviderRecord {
   return {
     id: provider.id,
@@ -188,12 +192,16 @@ function mapProvider(provider: {
     accountLabel: provider.connectedAccountLabel ?? provider.providerName,
     status: humanizeEnum(provider.status),
     health: mapHealthStatus(provider.healthStatus),
+    connectionMethod: humanizeEnum(provider.connectionMethod),
+    syncState: humanizeEnum(provider.syncState),
     dashboardUrl: provider.dashboardUrl ?? "",
     billingUrl: provider.billingUrl ?? undefined,
     editUrl: provider.editUrl ?? undefined,
     supportUrl: provider.supportUrl ?? undefined,
     monthlyCost: toNumber(provider.monthlyCostEstimate),
     renewalDate: provider.renewalDate?.toISOString(),
+    lastSyncAt: provider.lastSyncAt?.toISOString() ?? null,
+    lastHealthCheckAt: provider.lastHealthCheckAt?.toISOString() ?? null,
     ownerDescription:
       provider.ownerDescription ?? "This connected tool is part of the website stack for this wallet.",
     metadata: jsonRecord(provider.metadata)
@@ -480,14 +488,20 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
           role: true
         }
       },
-      providers: {
-        where: {
-          id: providerId
-        },
-        include: {
-          billingRecords: {
-            orderBy: {
-              createdAt: "desc"
+        providers: {
+          where: {
+            id: providerId
+          },
+          include: {
+            secrets: {
+              orderBy: {
+                createdAt: "desc"
+              },
+              take: 5
+            },
+            billingRecords: {
+              orderBy: {
+                createdAt: "desc"
             },
             take: 5
           }
@@ -521,10 +535,17 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
       planTier: wallet.planTier ?? "Starter",
       role: role.toLowerCase()
     },
-    provider: {
-      ...provider,
-      websiteId: providerRecord.websiteId ?? null
-    },
+      provider: {
+        ...provider,
+        websiteId: providerRecord.websiteId ?? null,
+        credentials: providerRecord.secrets.map((secret) => ({
+          id: secret.id,
+          type: humanizeEnum(secret.secretType),
+          status: humanizeEnum(secret.status),
+          maskedPreview: secret.maskedPreview ?? "Stored securely",
+          expiresAt: secret.expiresAt?.toISOString() ?? null
+        }))
+      },
     recentBilling: providerRecord.billingRecords.map((record) => ({
       id: record.id,
       label: record.label,

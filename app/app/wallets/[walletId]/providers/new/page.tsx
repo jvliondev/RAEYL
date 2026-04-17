@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+
 import { createProviderConnection } from "@/lib/actions/wallets";
+import { requireSession } from "@/lib/auth/access";
+import { getWalletFormData } from "@/lib/data/wallets";
+import { CATEGORY_LABELS, PROVIDER_CATALOG, getTemplateBySlug } from "@/lib/data/provider-catalog";
 import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
@@ -8,9 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Textarea } from "@/components/ui/textarea";
-import { requireSession } from "@/lib/auth/access";
-import { getWalletFormData } from "@/lib/data/wallets";
-import { CATEGORY_LABELS, PROVIDER_CATALOG, getTemplateBySlug } from "@/lib/data/provider-catalog";
 
 export default async function NewProviderPage({
   params,
@@ -25,12 +26,13 @@ export default async function NewProviderPage({
   const { walletContext, websites } = await getWalletFormData(walletId, session.user.id);
 
   const selectedTemplate = templateSlug ? getTemplateBySlug(templateSlug) : undefined;
-
-  // Group catalog by category
   const grouped: Record<string, typeof PROVIDER_CATALOG> = {};
-  for (const t of PROVIDER_CATALOG) {
-    if (!grouped[t.category]) grouped[t.category] = [];
-    grouped[t.category].push(t);
+
+  for (const template of PROVIDER_CATALOG) {
+    if (!grouped[template.category]) {
+      grouped[template.category] = [];
+    }
+    grouped[template.category].push(template);
   }
 
   return (
@@ -53,23 +55,22 @@ export default async function NewProviderPage({
         </Link>
       </div>
       {!selectedTemplate ? (
-        // CATALOG PICKER
         <div className="space-y-8">
           <div className="grid gap-6">
             {Object.entries(grouped).map(([category, templates]) => (
               <div key={category}>
-                <div className="mb-3 text-xs font-semibold tracking-widest text-muted uppercase">
+                <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
                   {CATEGORY_LABELS[category] ?? category}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {templates.map((t) => (
+                  {templates.map((template) => (
                     <a
-                      key={t.slug}
-                      href={`/app/wallets/${walletId}/providers/new?template=${t.slug}${websiteId ? `&websiteId=${websiteId}` : ""}`}
-                      className="flex flex-col gap-1 rounded-md border border-white/10 p-4 hover:bg-white/5 hover:border-white/20 transition-all cursor-pointer"
+                      key={template.slug}
+                      href={`/app/wallets/${walletId}/providers/new?template=${template.slug}${websiteId ? `&websiteId=${websiteId}` : ""}`}
+                      className="flex cursor-pointer flex-col gap-1 rounded-md border border-white/10 p-4 transition-all hover:border-white/20 hover:bg-white/5"
                     >
-                      <div className="font-medium text-sm">{t.displayName}</div>
-                      <div className="text-xs text-muted line-clamp-2">{t.defaultOwnerLabel}</div>
+                      <div className="text-sm font-medium">{template.displayName}</div>
+                      <div className="line-clamp-2 text-xs text-muted">{template.defaultOwnerLabel}</div>
                     </a>
                   ))}
                 </div>
@@ -78,26 +79,23 @@ export default async function NewProviderPage({
           </div>
 
           <div>
-            <div className="mb-3 text-xs font-semibold tracking-widest text-muted uppercase">
-              Custom
-            </div>
+            <div className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">Custom</div>
             <a
               href={`/app/wallets/${walletId}/providers/new?template=custom${websiteId ? `&websiteId=${websiteId}` : ""}`}
-              className="flex flex-col gap-1 rounded-md border border-white/10 p-4 hover:bg-white/5 hover:border-white/20 transition-all cursor-pointer max-w-sm"
+              className="flex max-w-sm cursor-pointer flex-col gap-1 rounded-md border border-white/10 p-4 transition-all hover:border-white/20 hover:bg-white/5"
             >
-              <div className="font-medium text-sm">Custom tool</div>
+              <div className="text-sm font-medium">Custom tool</div>
               <div className="text-xs text-muted">Add any tool not in the catalog above.</div>
             </a>
           </div>
         </div>
       ) : (
-        // CONNECT FORM (pre-filled from template or custom)
         <form action={createProviderConnection} className="grid gap-6 xl:grid-cols-[1fr_320px]">
-          {formError && <p className="md:col-span-2 text-sm text-destructive">{formError}</p>}
+          {formError ? <p className="md:col-span-2 text-sm text-destructive">{formError}</p> : null}
           <input type="hidden" name="walletId" value={walletContext.id} />
-          {selectedTemplate.slug !== "custom" && (
+          {selectedTemplate.slug !== "custom" ? (
             <input type="hidden" name="providerTemplateSlug" value={selectedTemplate.slug} />
-          )}
+          ) : null}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -107,7 +105,9 @@ export default async function NewProviderPage({
                 <FormField label="Category">
                   <Select name="category" defaultValue={selectedTemplate.category ?? "CUSTOM"}>
                     {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
                     ))}
                   </Select>
                 </FormField>
@@ -136,6 +136,12 @@ export default async function NewProviderPage({
                 </FormField>
                 <FormField label="Connected account label">
                   <Input name="connectedAccountLabel" placeholder="e.g. acme-corp project" />
+                </FormField>
+                <FormField label="External project ID or name">
+                  <Input name="externalProjectId" placeholder="Optional: lock this wallet to one project" />
+                </FormField>
+                <FormField label="External team ID or slug">
+                  <Input name="externalTeamId" placeholder="Optional: select the correct team or workspace" />
                 </FormField>
                 <FormField label="Website link">
                   <Select name="websiteId" defaultValue={websiteId ?? websites[0]?.id ?? ""}>
@@ -182,6 +188,37 @@ export default async function NewProviderPage({
                     rows={3}
                   />
                 </FormField>
+                <FormField
+                  label="API token"
+                  hint={
+                    selectedTemplate.slug === "vercel"
+                      ? "For Vercel, paste a personal token and RAEYL will verify the account and look for projects automatically."
+                      : "Used when connection method is API token. Stored encrypted and never shown in full."
+                  }
+                  className="md:col-span-2"
+                >
+                  <Input name="apiToken" type="password" placeholder="Paste provider API token" />
+                </FormField>
+                <FormField
+                  label="Secure credential or access code"
+                  hint="Used when connection method is Secure link. Stored encrypted."
+                  className="md:col-span-2"
+                >
+                  <Input
+                    name="secureCredential"
+                    type="password"
+                    placeholder="Paste secure credential or shared access code"
+                  />
+                </FormField>
+                <div className="md:col-span-2 rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm text-muted">
+                  <div className="font-medium text-foreground">Connection behavior</div>
+                  <ul className="mt-2 space-y-1">
+                    <li>Manual record: saves links and notes only.</li>
+                    <li>API token: stores the token securely and verifies supported providers like Vercel.</li>
+                    <li>OAuth: coming next. For now, use API token or manual record.</li>
+                    <li>Secure link: stores an access credential securely alongside the dashboard links.</li>
+                  </ul>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -203,9 +240,9 @@ export default async function NewProviderPage({
               <SubmitButton className="w-full">Save connected tool</SubmitButton>
               <a
                 href={`/app/wallets/${walletId}/providers/new${websiteId ? `?websiteId=${websiteId}` : ""}`}
-                className="block text-center text-xs text-muted hover:text-foreground mt-2"
+                className="mt-2 block text-center text-xs text-muted hover:text-foreground"
               >
-                ← Back to catalog
+                Back to catalog
               </a>
             </CardContent>
           </Card>

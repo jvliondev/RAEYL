@@ -19,6 +19,26 @@ function healthVariant(health: ProviderRecord["health"]) {
   }
 }
 
+function statusLabel(provider: ProviderRecord) {
+  if (provider.health === "healthy") {
+    return "Connected";
+  }
+
+  if (provider.health === "attention") {
+    return "Needs review";
+  }
+
+  if (provider.health === "issue" || provider.health === "disconnected") {
+    return "Action needed";
+  }
+
+  if (provider.syncState?.toLowerCase().includes("pending")) {
+    return "Pending verification";
+  }
+
+  return provider.status;
+}
+
 export function ProviderCard({ provider, walletId }: { provider: ProviderRecord; walletId: string }) {
   return (
     <Card>
@@ -30,10 +50,18 @@ export function ProviderCard({ provider, walletId }: { provider: ProviderRecord;
             {provider.ownerDescription} <span className="text-foreground/70">Powered by {provider.name}.</span>
           </CardDescription>
         </div>
-        <Badge variant={healthVariant(provider.health)}>{provider.status}</Badge>
+        <Badge variant={healthVariant(provider.health)}>{statusLabel(provider)}</Badge>
       </CardHeader>
-      <CardContent>
-        <div className="mb-4 flex items-center justify-between text-sm">
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted">Connection</span>
+          <span>{provider.connectionMethod ?? "Not recorded"}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted">Sync</span>
+          <span>{provider.syncState ?? "Unknown"}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
           <span className="text-muted">Estimated cost</span>
           <span>{formatCurrency(provider.monthlyCost)}</span>
         </div>

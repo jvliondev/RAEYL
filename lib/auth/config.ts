@@ -9,6 +9,16 @@ import { baseAuthConfig } from "@/lib/auth/base";
 import { prisma } from "@/lib/prisma";
 import { log } from "@/lib/logging";
 
+const googleProvider =
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ? [
+        Google({
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET
+        })
+      ]
+    : [];
+
 const resendProvider = process.env.RESEND_API_KEY
   ? [Resend({ apiKey: process.env.RESEND_API_KEY, from: process.env.EMAIL_FROM ?? "noreply@raeyl.com" })]
   : [];
@@ -17,10 +27,7 @@ export const authConfig = {
   ...baseAuthConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? ""
-    }),
+    ...googleProvider,
     ...resendProvider,
     Credentials({
       name: "Email and password",

@@ -1,10 +1,12 @@
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdminSession } from "@/lib/auth/access";
 import { getAdminAlertsData } from "@/lib/data/wallets";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminAlertsPage() {
+  await requireAdminSession();
   const alerts = await getAdminAlertsData();
 
   return (
@@ -21,11 +23,11 @@ export default async function AdminAlertsPage() {
             alerts.map((alert) => (
               <div key={alert.id} className="rounded-md border border-white/10 p-4">
                 <div className="font-medium text-foreground">
-                  {alert.severity} • {alert.title}
+                  {alert.severity} · {alert.title}
                 </div>
                 <div>
                   {alert.walletName}
-                  {alert.provider ? ` • ${alert.provider}` : ""}
+                  {alert.provider ? ` · ${alert.provider}` : ""}
                 </div>
                 <div className="text-xs">{formatDate(alert.createdAt)}</div>
               </div>

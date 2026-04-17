@@ -4,10 +4,12 @@ import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/app/empty-state";
+import { requireAdminSession } from "@/lib/auth/access";
 import { getAdminWalletsData } from "@/lib/data/admin";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminWalletsPage() {
+  await requireAdminSession();
   const wallets = await getAdminWalletsData();
 
   return (
@@ -24,22 +26,18 @@ export default async function AdminWalletsPage() {
               <Link
                 key={wallet.id}
                 href={`/app/wallets/${wallet.id}`}
-                className="flex flex-col gap-3 rounded-md border border-white/10 p-4 hover:bg-white/5 transition-colors md:flex-row md:items-center md:justify-between"
+                className="flex flex-col gap-3 rounded-md border border-white/10 p-4 transition-colors hover:bg-white/5 md:flex-row md:items-center md:justify-between"
               >
                 <div>
                   <div className="font-medium">{wallet.name}</div>
                   <div className="text-sm text-muted">{wallet.businessName}</div>
-                  <div className="text-xs text-muted mt-1">
+                  <div className="mt-1 text-xs text-muted">
                     Created by {wallet.createdBy} · {formatDate(wallet.createdAt)}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={"neutral"}>
-                    {wallet.status.toLowerCase().replace("_", " ")}
-                  </Badge>
-                  {wallet.planTier !== "None" && (
-                    <Badge variant="accent">{wallet.planTier}</Badge>
-                  )}
+                  <Badge variant="neutral">{wallet.status.toLowerCase().replace("_", " ")}</Badge>
+                  {wallet.planTier !== "None" ? <Badge variant="accent">{wallet.planTier}</Badge> : null}
                   <Badge variant="neutral">{wallet.memberCount} members</Badge>
                   <Badge variant="neutral">{wallet.providerCount} tools</Badge>
                 </div>

@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { requireAdminSession } from "@/lib/auth/access";
 import { getAdminSupportData } from "@/lib/data/wallets";
 import { formatDate } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ export default async function AdminSupportPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await requireAdminSession();
   const requests = await getAdminSupportData();
   const resolvedSearchParams = await searchParams;
   const updated = typeof resolvedSearchParams.updated === "string";
@@ -38,14 +40,14 @@ export default async function AdminSupportPage({
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div>
                       <div className="font-medium text-foreground">
-                        {request.priority} • {request.subject}
+                        {request.priority} · {request.subject}
                       </div>
                       <div>
                         {request.walletName}
-                        {request.provider ? ` • ${request.provider}` : ""}
+                        {request.provider ? ` · ${request.provider}` : ""}
                       </div>
                       <div className="text-xs">
-                        {request.status} • {request.category} • {request.requester} • {formatDate(request.createdAt)}
+                        {request.status} · {request.category} · {request.requester} · {formatDate(request.createdAt)}
                       </div>
                       <div className="mt-1 text-xs text-muted">
                         {request.messages} recent message{request.messages === 1 ? "" : "s"}

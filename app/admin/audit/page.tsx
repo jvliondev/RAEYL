@@ -1,10 +1,12 @@
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/app/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdminSession } from "@/lib/auth/access";
 import { getAdminAuditData } from "@/lib/data/wallets";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminAuditPage() {
+  await requireAdminSession();
   const logs = await getAdminAuditData();
 
   return (
@@ -23,7 +25,7 @@ export default async function AdminAuditPage() {
                 <div className="font-medium text-foreground">{log.action}</div>
                 <div>{log.summary}</div>
                 <div className="text-xs">
-                  {log.walletName} • {log.actor} • {formatDate(log.createdAt)}
+                  {log.walletName} · {log.actor} · {formatDate(log.createdAt)}
                 </div>
               </div>
             ))

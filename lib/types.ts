@@ -50,6 +50,8 @@ export interface ProviderRecord {
   accountLabel: string;
   status: string;
   health: HealthState;
+  connectionMethod?: string;
+  syncState?: string;
   dashboardUrl: string;
   billingUrl?: string;
   editUrl?: string;
@@ -58,6 +60,15 @@ export interface ProviderRecord {
   renewalDate?: string;
   ownerDescription: string;
   metadata: Record<string, string>;
+  credentials?: Array<{
+    id: string;
+    type: string;
+    status: string;
+    maskedPreview: string;
+    expiresAt?: string | null;
+  }>;
+  lastSyncAt?: string | null;
+  lastHealthCheckAt?: string | null;
 }
 
 export interface AlertRecord {

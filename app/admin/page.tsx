@@ -3,9 +3,11 @@ import Link from "next/link";
 import { AppShell } from "@/components/app/app-shell";
 import { StatCard } from "@/components/app/stat-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requireAdminSession } from "@/lib/auth/access";
 import { getAdminStats } from "@/lib/data/admin";
 
 export default async function AdminPage() {
+  await requireAdminSession();
   const stats = await getAdminStats();
 
   return (
@@ -64,7 +66,7 @@ export default async function AdminPage() {
                 <Link
                   key={href}
                   href={href}
-                  className="rounded-md border border-white/10 p-3 hover:bg-white/5 transition-colors"
+                  className="rounded-md border border-white/10 p-3 transition-colors hover:bg-white/5"
                 >
                   {label}
                 </Link>
