@@ -13,7 +13,7 @@ import {
   Siren,
   Workflow
 } from "lucide-react";
-import { WalletChat } from "@/components/app/wallet-chat";
+import { FloatingChat } from "@/components/app/floating-chat";
 import { RaeylLogo } from "@/components/ui/raeyl-logo";
 
 import { logOut } from "@/lib/actions/auth";
@@ -215,17 +215,6 @@ export async function AppShell({
               </div>
             ) : null}
 
-            {/* AI assistant — pinned to sidebar bottom */}
-            {wallet.id ? (
-              <div className="soft-divider mt-auto pt-4">
-                <div className="mb-2 px-1 text-xs uppercase tracking-[0.16em] text-muted">
-                  Website assistant
-                </div>
-                <div className="h-72 overflow-hidden rounded-lg border border-white/[0.06] bg-black/20">
-                  <WalletChat walletId={wallet.id} compact />
-                </div>
-              </div>
-            ) : null}
           </div>
         </aside>
         <main className="min-w-0">
@@ -272,6 +261,9 @@ export async function AppShell({
           <div className="page-shell py-8">{children}</div>
         </main>
       </div>
+
+      {/* Floating AI assistant — fixed bottom-right, present on all wallet pages */}
+      {wallet.id ? <FloatingChat walletId={wallet.id} /> : null}
     </div>
   );
 }
