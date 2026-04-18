@@ -34,7 +34,7 @@ export default async function PartnerPage() {
       description="Track referred wallets, active rewards, and payout readiness."
     >
       <div className="space-y-8">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard
             label="Active referrals"
             value={String(data.stats.activeReferrals)}
@@ -43,7 +43,7 @@ export default async function PartnerPage() {
           <StatCard
             label="Estimated monthly payout"
             value={formatCurrency(data.stats.estimatedMonthlyPayout)}
-            supporting="Based on active referrals and commission rate."
+            supporting="Based on active referrals and current plan mix."
             tone="success"
           />
           <StatCard
@@ -51,6 +51,16 @@ export default async function PartnerPage() {
             value={`${(data.partner.commissionRateBps / 100).toFixed(1)}%`}
             supporting="Your current partner commission rate."
             tone="accent"
+          />
+          <StatCard
+            label="Live wallets"
+            value={String(data.stats.liveWallets)}
+            supporting="Referred wallets with an active subscription."
+          />
+          <StatCard
+            label="Completed handoffs"
+            value={String(data.stats.handoffCompleted)}
+            supporting="Wallets fully handed off to the owner."
           />
         </div>
 
@@ -70,24 +80,24 @@ export default async function PartnerPage() {
                 data.referrals.map((r) => (
                   <div
                     key={r.id}
-                    className="flex items-center justify-between rounded-md border border-white/10 p-4"
+                    className="flex flex-col gap-3 rounded-md border border-white/10 p-4 md:flex-row md:items-center md:justify-between"
                   >
                     <div>
                       <div className="font-medium">{r.walletName}</div>
                       <div className="text-sm text-muted">{r.businessName}</div>
-                      {r.activatedAt && (
-                        <div className="text-xs text-muted mt-1">
-                          Active since {formatDate(r.activatedAt)}
-                        </div>
-                      )}
+                      {r.activatedAt ? (
+                        <div className="mt-1 text-xs text-muted">Active since {formatDate(r.activatedAt)}</div>
+                      ) : null}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant={r.status === "ACTIVE" ? "success" : "warning"}>
-                        {r.status.toLowerCase()}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge variant={r.status === "ACTIVE" ? "success" : "warning"}>{r.status.toLowerCase()}</Badge>
+                      <Badge variant="neutral">{r.planTier}</Badge>
+                      <Badge variant={r.handoffStatus === "COMPLETED" ? "success" : "neutral"}>
+                        {r.handoffStatus.toLowerCase().replace("_", " ")}
                       </Badge>
-                      <div className="text-sm text-muted">
-                        {r.planTier}
-                      </div>
+                      {r.subscriptionStatus ? (
+                        <div className="text-xs text-muted">{r.subscriptionStatus.toLowerCase().replace("_", " ")}</div>
+                      ) : null}
                     </div>
                   </div>
                 ))
@@ -108,26 +118,27 @@ export default async function PartnerPage() {
                 />
               ) : (
                 data.payouts.map((p) => (
-                  <div
-                    key={p.id}
-                    className="rounded-md border border-white/10 p-4 space-y-1"
-                  >
+                  <div key={p.id} className="space-y-1 rounded-md border border-white/10 p-4">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{formatCurrency(p.amount)}</span>
-                      <Badge variant={
-                        p.status === "PAID" ? "success" :
-                        p.status === "READY" ? "accent" :
-                        p.status === "FAILED" ? "danger" : "warning"
-                      }>
+                      <Badge
+                        variant={
+                          p.status === "PAID"
+                            ? "success"
+                            : p.status === "READY"
+                              ? "accent"
+                              : p.status === "FAILED"
+                                ? "danger"
+                                : "warning"
+                        }
+                      >
                         {p.status.toLowerCase()}
                       </Badge>
                     </div>
                     <div className="text-xs text-muted">
-                      {formatDate(p.periodStart)} – {formatDate(p.periodEnd)}
+                      {formatDate(p.periodStart)} - {formatDate(p.periodEnd)}
                     </div>
-                    {p.paidAt && (
-                      <div className="text-xs text-muted">Paid {formatDate(p.paidAt)}</div>
-                    )}
+                    {p.paidAt ? <div className="text-xs text-muted">Paid {formatDate(p.paidAt)}</div> : null}
                   </div>
                 ))
               )}

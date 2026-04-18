@@ -24,6 +24,7 @@ import type {
 } from "@/lib/types";
 import { getBillingConfigurationSummary } from "@/lib/services/billing-service";
 import { getHandoffReadiness } from "@/lib/services/handoff-state";
+import { getWalletTemplateBySlug } from "@/lib/data/wallet-templates";
 
 function walletAccessWhere(walletId: string, userId: string): Prisma.WalletWhereInput {
   return {
@@ -163,6 +164,24 @@ function jsonRecord(value: Prisma.JsonValue | null | undefined) {
   );
 }
 
+async function getWalletSettingMap(walletId: string, userId?: string) {
+  const whereClauses: Prisma.SettingWhereInput[] = [
+    { scope: "WALLET", walletId, userId: null }
+  ];
+
+  if (userId) {
+    whereClauses.push({ scope: "USER", walletId, userId });
+  }
+
+  const settings = await prisma.setting.findMany({
+    where: {
+      OR: whereClauses
+    }
+  });
+
+  return Object.fromEntries(settings.map((setting) => [setting.key, setting.value]));
+}
+
 function mapProvider(provider: {
   id: string;
   providerName: string;
@@ -241,7 +260,18 @@ export async function listWalletsForUser(userId: string) {
           businessName: true,
           websiteUrl: true,
           planTier: true,
-          handoffStatus: true
+          handoffStatus: true,
+          _count: {
+            select: {
+              providers: true,
+              websites: true,
+              alerts: {
+                where: {
+                  status: AlertStatus.OPEN
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -257,7 +287,10 @@ export async function listWalletsForUser(userId: string) {
     planTier: membership.wallet.planTier ?? "Starter",
     handoffStatus: humanizeEnum(membership.wallet.handoffStatus),
     role: humanizeEnum(membership.role),
-    membershipStatus: humanizeEnum(membership.status)
+    membershipStatus: humanizeEnum(membership.status),
+    providerCount: membership.wallet._count.providers,
+    websiteCount: membership.wallet._count.websites,
+    alertCount: membership.wallet._count.alerts
   }));
 }
 
@@ -360,6 +393,11 @@ export async function getWalletDashboardData(walletId: string, userId: string) {
 
   ensureCapability(role, "wallet.read");
 
+  const settingMap = await getWalletSettingMap(wallet.id, userId);
+  const templateSlug = typeof settingMap.walletTemplate === "string" ? settingMap.walletTemplate : null;
+  const walletTemplate = getWalletTemplateBySlug(templateSlug);
+  const ownerWalkthroughDismissed = settingMap.ownerWalkthroughDismissed === true;
+
   const providers = wallet.providers.map(mapProvider);
   const websites = wallet.websites.map((website) => ({
     id: website.id,
@@ -422,6 +460,8 @@ export async function getWalletDashboardData(walletId: string, userId: string) {
       setupStatus: humanizeEnum(wallet.setupStatus),
       monthlyCost: billing.reduce((total, record) => total + record.amount, 0),
       urgentAlerts: alerts.filter((alert) => ["critical", "warning"].includes(alert.severity)).length,
+      ownerWalkthroughDismissed,
+      template: walletTemplate,
       providers,
       websites,
       alerts,
@@ -464,6 +504,9 @@ export async function getWalletProvidersData(walletId: string, userId: string) {
 
   ensureCapability(role, "provider.read");
 
+  const settingMap = await getWalletSettingMap(wallet.id, userId);
+  const templateSlug = typeof settingMap.walletTemplate === "string" ? settingMap.walletTemplate : null;
+
   return {
     walletContext: {
       id: wallet.id,
@@ -471,7 +514,8 @@ export async function getWalletProvidersData(walletId: string, userId: string) {
       planTier: wallet.planTier ?? "Starter",
       role: role.toLowerCase()
     },
-    providers: wallet.providers.map(mapProvider)
+    providers: wallet.providers.map(mapProvider),
+    templateSlug
   };
 }
 
@@ -527,6 +571,14 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
   }
 
   const provider = mapProvider(providerRecord);
+  const templateSlug =
+    (typeof providerRecord.metadata === "object" &&
+    providerRecord.metadata &&
+    !Array.isArray(providerRecord.metadata) &&
+    "providerTemplateSlug" in providerRecord.metadata &&
+    typeof providerRecord.metadata.providerTemplateSlug === "string")
+      ? providerRecord.metadata.providerTemplateSlug
+      : null;
 
   return {
     walletContext: {
@@ -537,6 +589,7 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
     },
       provider: {
         ...provider,
+        templateSlug,
         websiteId: providerRecord.websiteId ?? null,
         credentials: providerRecord.secrets.map((secret) => ({
           id: secret.id,
@@ -1119,6 +1172,10 @@ export async function getWalletSetupData(walletId: string, userId: string) {
 
   ensureCapability(role, "wallet.read");
 
+  const settingMap = await getWalletSettingMap(wallet.id, userId);
+  const templateSlug = typeof settingMap.walletTemplate === "string" ? settingMap.walletTemplate : null;
+  const walletTemplate = getWalletTemplateBySlug(templateSlug);
+
   return {
     walletContext: {
       id: wallet.id,
@@ -1126,7 +1183,8 @@ export async function getWalletSetupData(walletId: string, userId: string) {
       planTier: wallet.planTier ?? "Starter",
       role: role.toLowerCase()
     },
-    websites: wallet.websites
+    websites: wallet.websites,
+    walletTemplate
   };
 }
 

@@ -23,9 +23,12 @@ export default async function WalletsPage() {
                     <CardDescription>{item.websiteUrl ?? "Website address not added yet"}</CardDescription>
                   </div>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between text-sm text-muted">
-                  <span>{item.planTier} plan • {item.role}</span>
-                  <span>{item.handoffStatus}</span>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+                  <span>{item.planTier} plan · {item.role}</span>
+                  <span>
+                    {item.websiteCount} website{item.websiteCount === 1 ? "" : "s"} · {item.providerCount} tool{item.providerCount === 1 ? "" : "s"}
+                  </span>
+                  <span>{item.alertCount} alert{item.alertCount === 1 ? "" : "s"} · {item.handoffStatus}</span>
                 </CardContent>
               </Card>
             </Link>

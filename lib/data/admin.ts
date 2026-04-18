@@ -1,4 +1,5 @@
 import { MembershipStatus, WalletStatus, BillingStatus, ReferralStatus } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 
 export async function getAdminStats() {
@@ -154,7 +155,19 @@ export async function getPartnerDashboardData(userId: string) {
       referrals: {
         where: { status: { in: [ReferralStatus.ACTIVE, ReferralStatus.PENDING] } },
         include: {
-          wallet: { select: { name: true, businessName: true, planTier: true } }
+          wallet: {
+            select: {
+              name: true,
+              businessName: true,
+              planTier: true,
+              handoffStatus: true,
+              subscriptions: {
+                take: 1,
+                orderBy: { createdAt: "desc" },
+                select: { status: true }
+              }
+            }
+          }
         },
         orderBy: { createdAt: "desc" }
       },
@@ -169,13 +182,19 @@ export async function getPartnerDashboardData(userId: string) {
 
   const activeReferrals = partner.referrals.filter((r) => r.status === ReferralStatus.ACTIVE);
   const pendingPayout = partner.payouts.find((p) => p.status === "PENDING");
+  const planValues: Record<string, number> = {
+    Starter: 39,
+    Growth: 99,
+    Scale: 199
+  };
 
-  // Rough monthly payout estimate: sum of (commission rate * estimated wallet value)
-  // In production this would come from actual billing data
   const estimatedMonthlyPayout = activeReferrals.reduce((sum, r) => {
-    const baseAmount = 100; // placeholder — replace with actual wallet MRR when available
+    const baseAmount = planValues[r.wallet.planTier ?? "Starter"] ?? 39;
     return sum + (baseAmount * r.commissionRateBps) / 10000;
   }, 0);
+
+  const liveWallets = activeReferrals.filter((r) => r.wallet.subscriptions[0]?.status === BillingStatus.ACTIVE).length;
+  const handoffCompleted = activeReferrals.filter((r) => r.wallet.handoffStatus === "COMPLETED").length;
 
   return {
     partner: {
@@ -188,7 +207,9 @@ export async function getPartnerDashboardData(userId: string) {
       activeReferrals: activeReferrals.length,
       totalReferrals: partner.referrals.length,
       estimatedMonthlyPayout,
-      payoutStatus: pendingPayout?.status ?? "No pending payout"
+      payoutStatus: pendingPayout?.status ?? "No pending payout",
+      liveWallets,
+      handoffCompleted
     },
     referrals: partner.referrals.map((r) => ({
       id: r.id,
@@ -197,7 +218,9 @@ export async function getPartnerDashboardData(userId: string) {
       planTier: r.wallet.planTier ?? "Starter",
       status: r.status,
       commissionRateBps: r.commissionRateBps,
-      activatedAt: r.activatedAt?.toISOString() ?? null
+      activatedAt: r.activatedAt?.toISOString() ?? null,
+      handoffStatus: r.wallet.handoffStatus,
+      subscriptionStatus: r.wallet.subscriptions[0]?.status ?? null
     })),
     payouts: partner.payouts.map((p) => ({
       id: p.id,

@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/c
 import { requireSession } from "@/lib/auth/access";
 import { getWalletSetupData } from "@/lib/data/wallets";
 import { prisma } from "@/lib/prisma";
+import { getWalletIntelligence } from "@/lib/services/wallet-intelligence";
+import type { WalletRole } from "@/lib/types";
 
 export default async function WalletSetupPage({
   params
@@ -14,7 +16,7 @@ export default async function WalletSetupPage({
 }) {
   const { walletId } = await params;
   const session = await requireSession();
-  const { walletContext, websites } = await getWalletSetupData(walletId, session.user.id);
+  const { walletContext, websites, walletTemplate } = await getWalletSetupData(walletId, session.user.id);
 
   const [providerCount, primaryEditRouteCount, ownerInviteCount] = await Promise.all([
     prisma.providerConnection.count({ where: { walletId } }),
@@ -67,6 +69,80 @@ export default async function WalletSetupPage({
   ];
 
   const completedSteps = steps.filter((step) => step.complete).length;
+  const providerRecords = await prisma.providerConnection.findMany({
+    where: { walletId },
+    select: {
+      id: true,
+      providerName: true,
+      category: true,
+      displayLabel: true,
+      connectedAccountLabel: true,
+      status: true,
+      healthStatus: true,
+      connectionMethod: true,
+      syncState: true,
+      dashboardUrl: true,
+      billingUrl: true,
+      editUrl: true,
+      supportUrl: true,
+      ownerDescription: true,
+      metadata: true,
+      monthlyCostEstimate: true,
+      renewalDate: true,
+      lastSyncAt: true,
+      lastHealthCheckAt: true
+    }
+  });
+  const intelligence = getWalletIntelligence({
+    role: walletContext.role as WalletRole,
+    walletId,
+    templateSlug: walletTemplate.slug,
+    websites: [],
+    providers: providerRecords.map((provider) => ({
+      id: provider.id,
+      name: provider.providerName,
+      category: provider.category.toLowerCase() as
+        | "hosting"
+        | "database"
+        | "cms"
+        | "domain"
+        | "email_forms"
+        | "analytics"
+        | "payments"
+        | "scheduling"
+        | "automation"
+        | "support"
+        | "storage"
+        | "auth_identity"
+        | "custom",
+      label: provider.displayLabel ?? provider.providerName,
+      accountLabel: provider.connectedAccountLabel ?? provider.providerName,
+      status: provider.status,
+      health:
+        provider.healthStatus === "HEALTHY"
+          ? "healthy"
+          : provider.healthStatus === "ATTENTION_NEEDED"
+            ? "attention"
+            : provider.healthStatus === "ISSUE_DETECTED"
+              ? "issue"
+              : provider.healthStatus === "DISCONNECTED"
+                ? "disconnected"
+                : "unknown",
+      connectionMethod: provider.connectionMethod.replaceAll("_", " "),
+      syncState: provider.syncState,
+      dashboardUrl: provider.dashboardUrl ?? "",
+      billingUrl: provider.billingUrl ?? undefined,
+      editUrl: provider.editUrl ?? undefined,
+      supportUrl: provider.supportUrl ?? undefined,
+      monthlyCost: Number(provider.monthlyCostEstimate ?? 0),
+      renewalDate: provider.renewalDate?.toISOString(),
+      ownerDescription: provider.ownerDescription ?? "Connected tool",
+      metadata: {}
+    })),
+    billing: [],
+    alerts: [],
+    ownerAccepted: ownerInviteCount > 0
+  });
 
   return (
     <AppShell
@@ -86,6 +162,34 @@ export default async function WalletSetupPage({
             {completedSteps}/{steps.length} complete
           </Badge>
         </div>
+      </div>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_360px]">
+        <Card>
+          <CardContent className="space-y-3 py-5">
+            <div className="text-sm font-medium text-foreground">{walletTemplate.label}</div>
+            <p className="text-sm text-muted">{walletTemplate.developerSummary}</p>
+            <p className="text-sm text-muted">{walletTemplate.editRoutingAdvice}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="space-y-3 py-5">
+            <div className="text-sm font-medium text-foreground">What would make this wallet feel complete</div>
+            {intelligence.missingRecommendedCategories.length ? (
+              <div className="flex flex-wrap gap-2">
+                {intelligence.missingRecommendedCategories.map((category) => (
+                  <Badge key={category} variant="neutral">
+                    {category.replace("_", " ")}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">
+                The core recommended system categories are already represented in this wallet.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4">

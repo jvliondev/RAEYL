@@ -5,6 +5,7 @@ import { createProviderConnection } from "@/lib/actions/wallets";
 import { requireSession } from "@/lib/auth/access";
 import { getWalletFormData } from "@/lib/data/wallets";
 import { CATEGORY_LABELS, PROVIDER_CATALOG, getTemplateBySlug } from "@/lib/data/provider-catalog";
+import { getProviderFrameworkProfile } from "@/lib/services/provider-framework";
 import { AppShell } from "@/components/app/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
@@ -26,6 +27,9 @@ export default async function NewProviderPage({
   const { walletContext, websites } = await getWalletFormData(walletId, session.user.id);
 
   const selectedTemplate = templateSlug ? getTemplateBySlug(templateSlug) : undefined;
+  const providerProfile = selectedTemplate
+    ? getProviderFrameworkProfile({ slug: selectedTemplate.slug, providerName: selectedTemplate.displayName })
+    : null;
   const grouped: Record<string, typeof PROVIDER_CATALOG> = {};
 
   for (const template of PROVIDER_CATALOG) {
@@ -215,10 +219,34 @@ export default async function NewProviderPage({
                   <ul className="mt-2 space-y-1">
                     <li>Manual record: saves links and notes only.</li>
                     <li>API token: stores the token securely and verifies supported providers like Vercel.</li>
-                    <li>OAuth: coming next. For now, use API token or manual record.</li>
+                    <li>OAuth: framework ready, provider-specific authorization flows still being added.</li>
                     <li>Secure link: stores an access credential securely alongside the dashboard links.</li>
                   </ul>
                 </div>
+                {providerProfile ? (
+                  <div className="md:col-span-2 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted">
+                    <div className="font-medium text-foreground">Best connection for this tool</div>
+                    <p className="mt-2">
+                      {providerProfile.bestConnectionMethod === "API_TOKEN"
+                        ? "Use an API token when possible."
+                        : providerProfile.bestConnectionMethod === "OAUTH"
+                          ? "OAuth will become the cleanest connection path for this tool."
+                          : "A manual record is the best fallback for this tool today."}
+                    </p>
+                    <p className="mt-2">{providerProfile.autoImportLabel}</p>
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-md border border-white/10 px-2 py-1">
+                        Live verification {providerProfile.supportsLiveVerification ? "available" : "limited"}
+                      </span>
+                      <span className="rounded-md border border-white/10 px-2 py-1">
+                        Health checks {providerProfile.supportsHealthChecks ? "available" : "planned"}
+                      </span>
+                      <span className="rounded-md border border-white/10 px-2 py-1">
+                        Edit routing {providerProfile.supportsEditRouting ? "supported" : "optional"}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </div>

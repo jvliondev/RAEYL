@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { refreshWalletHealth } from "@/lib/actions/wallets";
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/app/empty-state";
 import { ProviderCard } from "@/components/app/provider-card";
@@ -13,17 +14,21 @@ import { getWalletIntelligence } from "@/lib/services/wallet-intelligence";
 import type { WalletRole } from "@/lib/types";
 
 export default async function ProvidersPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ walletId: string }>;
+  searchParams: Promise<{ health?: string }>;
 }) {
   const { walletId } = await params;
+  const { health } = await searchParams;
   const session = await requireSession();
-  const { walletContext, providers } = await getWalletProvidersData(walletId, session.user.id);
+  const { walletContext, providers, templateSlug } = await getWalletProvidersData(walletId, session.user.id);
   const canManageProviders = walletContext.role ? hasCapability(walletContext.role, "provider.write") : false;
   const intelligence = getWalletIntelligence({
     role: walletContext.role as WalletRole,
     walletId,
+    templateSlug,
     websites: [],
     providers,
     billing: [],
@@ -42,6 +47,13 @@ export default async function ProvidersPage({
       walletContext={walletContext}
     >
       <div className="space-y-6">
+        {health === "checked" ? (
+          <Card>
+            <CardContent className="py-4 text-sm text-success">
+              Live health checks finished. Provider status has been refreshed where verification is available.
+            </CardContent>
+          </Card>
+        ) : null}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-3">
             <Card>
@@ -70,11 +82,38 @@ export default async function ProvidersPage({
             </Card>
           </div>
           {canManageProviders ? (
-            <Link href={`/app/wallets/${walletContext.id}/providers/new`}>
-              <Button>Connect a tool</Button>
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <form action={refreshWalletHealth}>
+                <input type="hidden" name="walletId" value={walletContext.id} />
+                <Button type="submit" variant="secondary">Run health checks</Button>
+              </form>
+              <Link href={`/app/wallets/${walletContext.id}/providers/new`}>
+                <Button>Connect a tool</Button>
+              </Link>
+            </div>
           ) : null}
         </div>
+
+        {intelligence.missingRecommendedCategories.length > 0 ? (
+          <Card>
+            <CardContent className="space-y-3 py-5">
+              <div className="flex items-center gap-2">
+                <Badge variant="warning">Suggested next</Badge>
+                <div className="text-sm font-medium">Recommended systems are still missing</div>
+              </div>
+              <p className="text-sm text-muted">
+                Based on this wallet&apos;s website type, adding these categories would make the handoff feel more complete.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {intelligence.missingRecommendedCategories.map((category) => (
+                  <Badge key={category} variant="neutral">
+                    {category.replace("_", " ")}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {intelligence.duplicateProviders.length > 0 ? (
           <Card>

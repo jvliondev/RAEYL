@@ -4,14 +4,15 @@ import { AppShell } from "@/components/app/app-shell";
 import { SectionHeading } from "@/components/app/section-heading";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { WALLET_TEMPLATES } from "@/lib/data/wallet-templates";
 
 export default function OnboardingPage() {
   const steps = [
-    "Create the website wallet",
-    "Add the live site and staging details",
-    "Connect the website tools",
-    "Define the editing paths",
-    "Invite the owner and complete handoff"
+    "Choose the website type so RAEYL can recommend the right setup path.",
+    "Create the wallet and add the live website details.",
+    "Connect the systems that actually power the site.",
+    "Define one clear edit path for the owner.",
+    "Invite the owner and complete a confident handoff."
   ];
 
   return (
@@ -25,7 +26,7 @@ export default function OnboardingPage() {
             <SectionHeading
               eyebrow="Get Started"
               title="Set up the wallet your client will actually use"
-              description="Move from website setup to connected tools to owner handoff in one clean working flow."
+              description="Move from website setup to connected systems to owner handoff in one clean working flow."
             />
           </CardHeader>
           <CardContent className="space-y-4">
@@ -42,21 +43,43 @@ export default function OnboardingPage() {
             </Link>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <div>
-              <CardTitle>Partner visibility</CardTitle>
-              <CardDescription>
-                Referral attribution and post-handoff collaborator mode stay tied to the wallet from the start.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted">
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Website templates</CardTitle>
+                <CardDescription>
+                  Choose the website type first and RAEYL will guide the rest of the setup more intelligently.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted">
+              {WALLET_TEMPLATES.slice(0, 4).map((template) => (
+                <div key={template.slug} className="rounded-md border border-white/10 p-3">
+                  <div className="font-medium text-foreground">{template.label}</div>
+                  <p className="mt-1">{template.description}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Partner visibility</CardTitle>
+                <CardDescription>
+                  Referral attribution and post-handoff collaborator mode stay tied to the wallet from the start.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted">
               <p>Keep ownership clear for the client from day one.</p>
               <p>Stay connected only with the collaborator access you actually want after handoff.</p>
               <p>Track referred client wallets and recurring rewards in the partner dashboard.</p>
             </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
     </AppShell>
   );

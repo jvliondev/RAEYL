@@ -48,6 +48,7 @@ export interface ProviderRecord {
   category: ProviderCategory;
   label: string;
   accountLabel: string;
+  templateSlug?: string | null;
   status: string;
   health: HealthState;
   connectionMethod?: string;

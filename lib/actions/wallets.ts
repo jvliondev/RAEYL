@@ -19,6 +19,7 @@ import { createSupportRequest } from "@/lib/services/support-service";
 import { getHandoffReadiness } from "@/lib/services/handoff-state";
 import { storeProviderSecret } from "@/lib/services/provider-credentials";
 import { verifyProviderConnection } from "@/lib/services/provider-connection-service";
+import { checkProviderHealth, checkWalletProviderHealth } from "@/lib/services/provider-health-service";
 import {
   accountSettingsSchema,
   billingRecordDeleteSchema,
@@ -51,6 +52,7 @@ export async function createWallet(
 
   const businessName = String(formData.get("businessName") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim() || businessName;
+  const walletTemplate = String(formData.get("walletTemplate") ?? "service-business").trim() || "service-business";
 
   if (!businessName || businessName.length < 2) {
     return "Please enter the business name.";
@@ -106,6 +108,15 @@ export async function createWallet(
     }
   });
 
+  await prisma.setting.create({
+    data: {
+      scope: "WALLET",
+      walletId: wallet.id,
+      key: "walletTemplate",
+      value: walletTemplate
+    }
+  });
+
   await recordAuditEvent({
     actorUserId: session.user.id,
     actorType: "USER",
@@ -117,6 +128,63 @@ export async function createWallet(
   });
 
   redirect(`/app/wallets/${wallet.id}/setup`);
+}
+
+export async function refreshWalletHealth(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "provider.read");
+  await checkWalletProviderHealth(walletId, session.user.id);
+
+  redirect(`/app/wallets/${walletId}/providers?health=checked`);
+}
+
+export async function refreshProviderHealth(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+  const providerId = String(formData.get("providerId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "provider.read");
+  await requireProviderInWallet(walletId, providerId);
+  await checkProviderHealth(providerId);
+
+  redirect(`/app/wallets/${walletId}/providers/${providerId}?health=checked`);
+}
+
+export async function dismissOwnerWalkthrough(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "wallet.read");
+
+  const existing = await prisma.setting.findFirst({
+    where: {
+      scope: "USER",
+      userId: session.user.id,
+      walletId,
+      key: "ownerWalkthroughDismissed"
+    }
+  });
+
+  if (existing) {
+    await prisma.setting.update({
+      where: { id: existing.id },
+      data: { value: true }
+    });
+  } else {
+    await prisma.setting.create({
+      data: {
+        scope: "USER",
+        userId: session.user.id,
+        walletId,
+        key: "ownerWalkthroughDismissed",
+        value: true
+      }
+    });
+  }
+
+  redirect(`/app/wallets/${walletId}`);
 }
 
 export async function createWebsite(formData: FormData) {
