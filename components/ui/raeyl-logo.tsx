@@ -37,12 +37,8 @@ export function RaeylLogo({
     <span className={cn("inline-flex items-center gap-3", className)}>
       <RaeylMark className={cn("h-7 w-auto flex-shrink-0", markClassName)} />
       <span
-        className="text-[11px] tracking-[0.38em] text-white/90"
-        style={{
-          fontFamily: "var(--font-display), system-ui",
-          fontWeight: 700,
-          letterSpacing: "0.38em"
-        }}
+        className="text-[12px] font-semibold tracking-[0.32em] text-white/80"
+        style={{ fontFamily: "var(--font-display), var(--font-inter), system-ui" }}
       >
         RAEYL
       </span>
