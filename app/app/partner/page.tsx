@@ -67,8 +67,10 @@ export default async function PartnerPage() {
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card>
             <CardHeader>
-              <CardTitle>Attributed wallets</CardTitle>
-              <CardDescription>Wallets referred through your partner account.</CardDescription>
+              <div>
+                <CardTitle>Attributed wallets</CardTitle>
+                <CardDescription>Wallets referred through your partner account.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {data.referrals.length === 0 ? (

@@ -12,7 +12,7 @@ export function ActionCard({
 }) {
   return (
     <Link href={href} className="group flex h-full">
-      <div className="relative h-full overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#141414] to-[#0d0d0d] p-4 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-white/[0.13] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+      <div className="relative flex h-full w-full flex-col overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-b from-[#141414] to-[#0d0d0d] p-4 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-white/[0.13] group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.07] to-transparent" />
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1 min-w-0">

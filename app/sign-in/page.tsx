@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RaeylLogo } from "@/components/ui/raeyl-logo";
 import { loginWithGoogle } from "@/lib/actions/auth";
 import { MagicLinkForm } from "./magic-link-form";
 import { SignInForm } from "./sign-in-form";
@@ -19,9 +20,9 @@ export default async function SignInPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md">
         <CardHeader className="block space-y-2">
-          <div className="text-sm font-semibold tracking-[0.22em]">RAEYL</div>
+          <RaeylLogo markClassName="h-9" />
           <CardTitle>Sign in to your wallet</CardTitle>
           <CardDescription>
             Open your website control center to review connected tools, costs, access, and the right next step.

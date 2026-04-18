@@ -423,10 +423,12 @@ export default async function WalletDashboardPage({
         {intelligence.missingRecommendedCategories.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>What would make this wallet feel complete</CardTitle>
-              <CardDescription>
-                Based on the selected website type, these system categories would make the owner experience feel more complete.
-              </CardDescription>
+              <div>
+                <CardTitle>What would make this wallet feel complete</CardTitle>
+                <CardDescription>
+                  Based on the selected website type, these system categories would make the owner experience feel more complete.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {intelligence.missingRecommendedCategories.map((category) => (

@@ -59,11 +59,13 @@ export default async function TransferOwnershipPage({
               <input type="hidden" name="walletId" value={walletId} />
               <Card>
                 <CardHeader>
-                  <CardTitle>Transfer to</CardTitle>
-                  <CardDescription>
-                    The selected member will become the primary owner. Their role will be updated
-                    to Wallet Owner. This is permanent unless transferred again.
-                  </CardDescription>
+                  <div>
+                    <CardTitle>Transfer to</CardTitle>
+                    <CardDescription>
+                      The selected member will become the primary owner. Their role will be updated
+                      to Wallet Owner. This is permanent unless transferred again.
+                    </CardDescription>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <FormField label="New primary owner">

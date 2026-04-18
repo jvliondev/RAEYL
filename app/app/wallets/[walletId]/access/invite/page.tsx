@@ -33,11 +33,13 @@ export default async function InviteTeammatePage({
           <input type="hidden" name="walletId" value={walletId} />
           <Card>
             <CardHeader>
-              <CardTitle>Invite details</CardTitle>
-              <CardDescription>
-                The invite link will be valid for 7 days. If the person already has a RAEYL account,
-                they will receive an in-app notification.
-              </CardDescription>
+              <div>
+                <CardTitle>Invite details</CardTitle>
+                <CardDescription>
+                  The invite link will be valid for 7 days. If the person already has a RAEYL account,
+                  they will receive an in-app notification.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField label="Email address">

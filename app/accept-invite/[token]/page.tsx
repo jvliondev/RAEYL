@@ -3,6 +3,7 @@ import Link from "next/link";
 import { acceptInvite } from "@/lib/actions/wallets";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RaeylLogo } from "@/components/ui/raeyl-logo";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { getInvitePreview } from "@/lib/data/invites";
 import { formatDate } from "@/lib/utils";
@@ -20,7 +21,7 @@ export default async function AcceptInvitePage({
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
       <Card className="w-full max-w-2xl">
         <CardHeader className="block space-y-2">
-          <div className="text-sm font-semibold tracking-[0.22em]">RAEYL</div>
+          <RaeylLogo markClassName="h-9" />
           <CardTitle>Accept your website wallet</CardTitle>
           <CardDescription>
             This gives you a clear place to review your website systems, editing paths, billing, and access.

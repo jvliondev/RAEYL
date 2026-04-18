@@ -128,10 +128,12 @@ export default async function AccessPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Ownership clarity</CardTitle>
-            <CardDescription>
-              The owner should always know who owns the site and who still helps manage it.
-            </CardDescription>
+            <div>
+              <CardTitle>Ownership clarity</CardTitle>
+              <CardDescription>
+                The owner should always know who owns the site and who still helps manage it.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="rounded-md border border-white/10 p-4">

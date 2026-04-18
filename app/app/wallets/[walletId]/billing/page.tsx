@@ -209,10 +209,12 @@ export default async function BillingPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>Invoice history</CardTitle>
-                <CardDescription>
-                  Past RAEYL invoices appear here as Stripe events are received.
-                </CardDescription>
+                <div>
+                  <CardTitle>Invoice history</CardTitle>
+                  <CardDescription>
+                    Past RAEYL invoices appear here as Stripe events are received.
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {invoiceHistory.length ? (
@@ -244,10 +246,12 @@ export default async function BillingPage({
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
             <CardHeader>
-              <CardTitle>Renewal timeline</CardTitle>
-              <CardDescription>
-                Keep annual renewals visible so nothing important sneaks up on the owner.
-              </CardDescription>
+              <div>
+                <CardTitle>Renewal timeline</CardTitle>
+                <CardDescription>
+                  Keep annual renewals visible so nothing important sneaks up on the owner.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {records.filter((record) => record.renewalDate).length ? (
@@ -341,10 +345,12 @@ export default async function BillingPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>Managed cost records</CardTitle>
-                <CardDescription>
-                  Update owner-managed costs, links, and renewal dates without touching provider billing systems.
-                </CardDescription>
+                <div>
+                  <CardTitle>Managed cost records</CardTitle>
+                  <CardDescription>
+                    Update owner-managed costs, links, and renewal dates without touching provider billing systems.
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {records.filter((record) => record.isOwnerManaged).length ? (

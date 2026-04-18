@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RaeylLogo } from "@/components/ui/raeyl-logo";
 import { RegisterForm } from "./register-form";
 
 export default function GetStartedPage() {
@@ -32,7 +33,7 @@ export default function GetStartedPage() {
         </Card>
         <Card>
           <CardHeader className="block space-y-2">
-            <div className="text-sm font-semibold tracking-[0.22em]">RAEYL</div>
+            <RaeylLogo markClassName="h-9" />
             <CardTitle>Create your account</CardTitle>
             <CardDescription>
               Start with the developer path. Owner invitations, access, and handoff all happen inside the wallet flow.

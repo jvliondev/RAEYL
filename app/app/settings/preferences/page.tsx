@@ -31,10 +31,12 @@ export default async function PreferenceSettingsPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Display and workflow</CardTitle>
-            <CardDescription>
-              These settings control your personal view — they only affect your account.
-            </CardDescription>
+            <div>
+              <CardTitle>Display and workflow</CardTitle>
+              <CardDescription>
+                These settings control your personal view — they only affect your account.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <form action={saveUserPreferences} className="space-y-5">
