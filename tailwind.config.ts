@@ -17,8 +17,8 @@ const config: Config = {
       colors: {
         background: "#080808",
         foreground: "#f0f0f0",
-        muted: "#505050",
-        border: "#1e1e1e",
+        muted: "#767676",
+        border: "#222222",
         card: "#0e0e0e",
         cardForeground: "#f0f0f0",
         primary: {
