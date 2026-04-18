@@ -11,53 +11,55 @@ import { WalletChat } from "./wallet-chat";
 function RaeylFloatMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 130 172"
+      viewBox="0 0 140 165"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="fc-chrome" x1="14" y1="10" x2="118" y2="162" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stopColor="#f4f4f4" />
-          <stop offset="10%"  stopColor="#d8d8d8" />
-          <stop offset="28%"  stopColor="#909090" />
-          <stop offset="46%"  stopColor="#2e2e2e" />
-          <stop offset="62%"  stopColor="#4a4a4a" />
-          <stop offset="78%"  stopColor="#8c8c8c" />
-          <stop offset="100%" stopColor="#b0b0b0" />
+        <linearGradient id="fc-body" x1="16" y1="8" x2="124" y2="158" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stopColor="#efefef" />
+          <stop offset="8%"   stopColor="#d6d6d6" />
+          <stop offset="22%"  stopColor="#a0a0a0" />
+          <stop offset="40%"  stopColor="#3c3c3c" />
+          <stop offset="55%"  stopColor="#1a1a1a" />
+          <stop offset="70%"  stopColor="#5a5a5a" />
+          <stop offset="84%"  stopColor="#9e9e9e" />
+          <stop offset="100%" stopColor="#b8b8b8" />
         </linearGradient>
-        <linearGradient id="fc-ribbon" x1="52" y1="12" x2="34" y2="158" gradientUnits="userSpaceOnUse">
+        <linearGradient id="fc-ribbon" x1="54" y1="10" x2="36" y2="155" gradientUnits="userSpaceOnUse">
           <stop offset="0%"   stopColor="#ffffff" />
-          <stop offset="20%"  stopColor="#e4e4e4" />
-          <stop offset="50%"  stopColor="#b0b0b0" />
-          <stop offset="100%" stopColor="#808080" />
+          <stop offset="15%"  stopColor="#ebebeb" />
+          <stop offset="42%"  stopColor="#c0c0c0" />
+          <stop offset="68%"  stopColor="#848484" />
+          <stop offset="100%" stopColor="#909090" />
         </linearGradient>
-        <radialGradient id="fc-counter" cx="65%" cy="45%" r="55%" gradientUnits="objectBoundingBox">
-          <stop offset="0%"   stopColor="#1a1a1a" />
-          <stop offset="100%" stopColor="#080808" />
+        <radialGradient id="fc-counter" cx="58%" cy="42%" r="54%" gradientUnits="objectBoundingBox">
+          <stop offset="0%"   stopColor="#1c1c1c" />
+          <stop offset="100%" stopColor="#060606" />
         </radialGradient>
-        <filter id="fc-shadow" x="-15%" y="-10%" width="140%" height="140%">
-          <feDropShadow dx="2" dy="4" stdDeviation="4" floodColor="#000" floodOpacity="0.7" />
+        <filter id="fc-shadow" x="-18%" y="-12%" width="145%" height="145%">
+          <feDropShadow dx="3" dy="6" stdDeviation="7" floodColor="#000" floodOpacity="0.72" />
         </filter>
       </defs>
 
       <path
-        d="M 18 158 L 18 14 L 68 14 C 102 14 120 35 116 63 C 113 86 97 101 75 105 L 116 158 L 89 158 L 53 107 L 40 107 L 40 158 Z"
-        fill="#000000" opacity="0.6" transform="translate(3 5)"
+        d="M 22 158 L 20 16 C 20 10 38 8 66 10 C 102 12 124 32 122 64 C 120 90 104 108 80 112 L 120 158 L 96 158 L 60 112 L 42 112 L 42 158 Z"
+        fill="#000000" opacity="0.6" transform="translate(4 5)"
       />
       <g filter="url(#fc-shadow)">
         <path
-          d="M 18 158 L 18 14 L 68 14 C 102 14 120 35 116 63 C 113 86 97 101 75 105 L 116 158 L 89 158 L 53 107 L 40 107 L 40 158 Z"
-          fill="url(#fc-chrome)"
+          d="M 22 158 L 20 16 C 20 10 38 8 66 10 C 102 12 124 32 122 64 C 120 90 104 108 80 112 L 120 158 L 96 158 L 60 112 L 42 112 L 42 158 Z"
+          fill="url(#fc-body)"
         />
         <path
-          d="M 40 32 L 40 89 C 60 94 90 88 95 63 C 100 37 68 30 40 32 Z"
+          d="M 42 30 L 42 92 C 56 100 94 96 100 68 C 106 40 82 26 42 30 Z"
           fill="url(#fc-counter)"
         />
         <path
-          d="M 14 14 C 18 8 26 8 34 11 L 34 108 L 72 158 L 90 158 L 52 108 L 52 13 C 42 10 16 10 14 14 Z"
-          fill="url(#fc-ribbon)" opacity="0.92"
+          d="M 16 16 C 18 8 28 8 38 12 L 38 112 L 76 158 L 96 158 L 54 112 L 54 13 C 46 10 18 10 16 16 Z"
+          fill="url(#fc-ribbon)" opacity="0.93"
         />
       </g>
     </svg>
