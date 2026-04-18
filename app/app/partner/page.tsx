@@ -109,8 +109,10 @@ export default async function PartnerPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Payout history</CardTitle>
-              <CardDescription>Recent payouts from your partner account.</CardDescription>
+              <div>
+                <CardTitle>Payout history</CardTitle>
+                <CardDescription>Recent payouts from your partner account.</CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {data.payouts.length === 0 ? (

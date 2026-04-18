@@ -286,10 +286,12 @@ export default async function ProviderDetailPage({
           {canManage ? (
             <Card className="border-destructive/20">
               <CardHeader>
-                <CardTitle className="text-destructive/80">Remove this tool</CardTitle>
-                <CardDescription>
-                  Permanently removes this provider from the wallet. The external service is not affected.
-                </CardDescription>
+                <div>
+                  <CardTitle className="text-destructive/80">Remove this tool</CardTitle>
+                  <CardDescription>
+                    Permanently removes this provider from the wallet. The external service is not affected.
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 <DeleteProviderButton walletId={walletId} providerId={providerId} label={provider.label} />

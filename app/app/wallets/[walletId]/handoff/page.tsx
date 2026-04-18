@@ -77,10 +77,12 @@ export default async function HandoffPage({
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Owner handoff preview</CardTitle>
-              <CardDescription>
-                This is the standard you are aiming for before the owner opens the wallet for the first time.
-              </CardDescription>
+              <div>
+                <CardTitle>Owner handoff preview</CardTitle>
+                <CardDescription>
+                  This is the standard you are aiming for before the owner opens the wallet for the first time.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-3">
               <div className="rounded-md border border-white/10 p-4 text-sm text-muted">
@@ -197,8 +199,10 @@ export default async function HandoffPage({
           {timeline.length > 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Handoff timeline</CardTitle>
-                <CardDescription>Key moments from setup through acceptance.</CardDescription>
+                <div>
+                  <CardTitle>Handoff timeline</CardTitle>
+                  <CardDescription>Key moments from setup through acceptance.</CardDescription>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {timeline.map((item) => (
@@ -215,10 +219,12 @@ export default async function HandoffPage({
 
         <Card className="h-fit">
           <CardHeader>
-            <CardTitle>Invite the owner</CardTitle>
-            <CardDescription>
-              Send a secure ownership invite. They will land in a wallet that explains the website in plain language.
-            </CardDescription>
+            <div>
+              <CardTitle>Invite the owner</CardTitle>
+              <CardDescription>
+                Send a secure ownership invite. They will land in a wallet that explains the website in plain language.
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             <form action={createOwnerInvite} className="space-y-4">
