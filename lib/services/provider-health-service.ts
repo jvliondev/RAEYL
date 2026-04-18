@@ -9,6 +9,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getVercelProjectHealth, mapVercelStateToHealth } from "./vercel-service";
 import { recordAuditEvent } from "@/lib/audit";
+import { decryptSecret } from "@/lib/security/encryption";
 
 export type HealthCheckResult = {
   providerId: string;
@@ -53,6 +54,7 @@ export async function checkProviderHealth(providerId: string): Promise<HealthChe
   if (slug === "vercel" || slug.includes("vercel")) {
     const token = provider.secrets[0];
     const projectId = provider.externalProjectId;
+    const teamId = provider.externalTeamId;
 
     if (!token || !projectId) {
       const result: HealthCheckResult = {
@@ -67,9 +69,8 @@ export async function checkProviderHealth(providerId: string): Promise<HealthChe
       return result;
     }
 
-    const { decrypt } = await import("@/lib/encryption");
-    const rawToken = await decrypt(token.encryptedValue);
-    const health = await getVercelProjectHealth(rawToken, projectId);
+    const rawToken = decryptSecret(token.encryptedValue);
+    const health = await getVercelProjectHealth(rawToken, projectId, teamId);
 
     const result: HealthCheckResult = {
       providerId,
@@ -81,7 +82,15 @@ export async function checkProviderHealth(providerId: string): Promise<HealthChe
         : `Last deployment: ${health.deploymentState} · ${health.lastDeployedAt ?? "unknown time"}`,
       checkedAt: now
     };
-    await persistHealthResult(provider.id, result, { deploymentState: health.deploymentState, domains: health.domains });
+    await persistHealthResult(provider.id, result, {
+      ...(provider.metadata && typeof provider.metadata === "object" && !Array.isArray(provider.metadata)
+        ? (provider.metadata as Record<string, unknown>)
+        : {}),
+      deploymentState: health.deploymentState,
+      domains: health.domains.join(", "),
+      deploymentUrl: health.deploymentUrl ?? "",
+      selectedProjectName: health.projectName ?? provider.externalProjectId ?? "not selected"
+    });
     return result;
   }
 

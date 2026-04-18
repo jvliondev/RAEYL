@@ -40,6 +40,10 @@ function statusLabel(provider: ProviderRecord) {
 }
 
 function statusNote(provider: ProviderRecord) {
+  if (provider.metadata.selectedProjectName === "not selected") {
+    return "RAEYL verified the account, but this tool still needs the right project selected.";
+  }
+
   if (provider.connectionMethod?.toLowerCase() === "api token" && provider.syncState?.toLowerCase().includes("pending")) {
     return "Live verification is still waiting to run.";
   }

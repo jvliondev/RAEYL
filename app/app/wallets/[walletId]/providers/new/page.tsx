@@ -7,6 +7,7 @@ import { getWalletFormData } from "@/lib/data/wallets";
 import { CATEGORY_LABELS, PROVIDER_CATALOG, getTemplateBySlug } from "@/lib/data/provider-catalog";
 import { getProviderFrameworkProfile } from "@/lib/services/provider-framework";
 import { AppShell } from "@/components/app/app-shell";
+import { VercelConnectionFields } from "@/components/app/vercel-connection-fields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default async function NewProviderPage({
   const { walletContext, websites } = await getWalletFormData(walletId, session.user.id);
 
   const selectedTemplate = templateSlug ? getTemplateBySlug(templateSlug) : undefined;
+  const isVercelTemplate = selectedTemplate?.slug === "vercel";
   const providerProfile = selectedTemplate
     ? getProviderFrameworkProfile({ slug: selectedTemplate.slug, providerName: selectedTemplate.displayName })
     : null;
@@ -118,9 +120,11 @@ export default async function NewProviderPage({
                 <FormField label="Connection method">
                   <Select name="connectionMethod" defaultValue={selectedTemplate.defaultConnectionMethod ?? "MANUAL"}>
                     <option value="MANUAL">Manual record</option>
-                    <option value="OAUTH">OAuth</option>
                     <option value="API_TOKEN">API token</option>
                     <option value="SECURE_LINK">Secure link</option>
+                    <option value="OAUTH" disabled>
+                      OAuth (coming soon)
+                    </option>
                   </Select>
                 </FormField>
                 <FormField label="Provider name">
@@ -138,15 +142,19 @@ export default async function NewProviderPage({
                     placeholder="e.g. Website hosting"
                   />
                 </FormField>
-                <FormField label="Connected account label">
-                  <Input name="connectedAccountLabel" placeholder="e.g. acme-corp project" />
-                </FormField>
-                <FormField label="External project ID or name">
-                  <Input name="externalProjectId" placeholder="Optional: lock this wallet to one project" />
-                </FormField>
-                <FormField label="External team ID or slug">
-                  <Input name="externalTeamId" placeholder="Optional: select the correct team or workspace" />
-                </FormField>
+                {!isVercelTemplate ? (
+                  <>
+                    <FormField label="Connected account label">
+                      <Input name="connectedAccountLabel" placeholder="e.g. acme-corp project" />
+                    </FormField>
+                    <FormField label="External project ID or name">
+                      <Input name="externalProjectId" placeholder="Optional: lock this wallet to one project" />
+                    </FormField>
+                    <FormField label="External team ID or slug">
+                      <Input name="externalTeamId" placeholder="Optional: select the correct team or workspace" />
+                    </FormField>
+                  </>
+                ) : null}
                 <FormField label="Website link">
                   <Select name="websiteId" defaultValue={websiteId ?? websites[0]?.id ?? ""}>
                     {websites.length ? (
@@ -160,23 +168,27 @@ export default async function NewProviderPage({
                     )}
                   </Select>
                 </FormField>
-                <FormField label="Dashboard URL">
-                  <Input
-                    name="dashboardUrl"
-                    defaultValue={selectedTemplate.dashboardUrlPattern ?? ""}
-                    placeholder="https://dashboard.provider.com"
-                  />
-                </FormField>
+                {!isVercelTemplate ? (
+                  <FormField label="Dashboard URL">
+                    <Input
+                      name="dashboardUrl"
+                      defaultValue={selectedTemplate.dashboardUrlPattern ?? ""}
+                      placeholder="https://dashboard.provider.com"
+                    />
+                  </FormField>
+                ) : null}
                 <FormField label="Edit URL">
                   <Input name="editUrl" placeholder="https://editor.provider.com" />
                 </FormField>
-                <FormField label="Billing URL">
-                  <Input
-                    name="billingUrl"
-                    defaultValue={selectedTemplate.billingUrlPattern ?? ""}
-                    placeholder="https://dashboard.provider.com/billing"
-                  />
-                </FormField>
+                {!isVercelTemplate ? (
+                  <FormField label="Billing URL">
+                    <Input
+                      name="billingUrl"
+                      defaultValue={selectedTemplate.billingUrlPattern ?? ""}
+                      placeholder="https://dashboard.provider.com/billing"
+                    />
+                  </FormField>
+                ) : null}
                 <FormField label="Support URL">
                   <Input
                     name="supportUrl"
@@ -192,17 +204,21 @@ export default async function NewProviderPage({
                     rows={3}
                   />
                 </FormField>
-                <FormField
-                  label="API token"
-                  hint={
-                    selectedTemplate.slug === "vercel"
-                      ? "For Vercel, paste a personal token and RAEYL will verify the account and look for projects automatically."
-                      : "Used when connection method is API token. Stored encrypted and never shown in full."
-                  }
-                  className="md:col-span-2"
-                >
-                  <Input name="apiToken" type="password" placeholder="Paste provider API token" />
-                </FormField>
+                {isVercelTemplate ? (
+                  <VercelConnectionFields
+                    walletId={walletContext.id}
+                    initialDashboardUrl={selectedTemplate.dashboardUrlPattern}
+                    initialBillingUrl={selectedTemplate.billingUrlPattern}
+                  />
+                ) : (
+                  <FormField
+                    label="API token"
+                    hint="Used when connection method is API token. Stored encrypted and never shown in full."
+                    className="md:col-span-2"
+                  >
+                    <Input name="apiToken" type="password" placeholder="Paste provider API token" />
+                  </FormField>
+                )}
                 <FormField
                   label="Secure credential or access code"
                   hint="Used when connection method is Secure link. Stored encrypted."
@@ -219,7 +235,7 @@ export default async function NewProviderPage({
                   <ul className="mt-2 space-y-1">
                     <li>Manual record: saves links and notes only.</li>
                     <li>API token: stores the token securely and verifies supported providers like Vercel.</li>
-                    <li>OAuth: framework ready, provider-specific authorization flows still being added.</li>
+                    <li>OAuth: reserved for providers with a wallet-safe authorization flow.</li>
                     <li>Secure link: stores an access credential securely alongside the dashboard links.</li>
                   </ul>
                 </div>

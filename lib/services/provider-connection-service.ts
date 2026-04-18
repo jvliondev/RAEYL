@@ -1,4 +1,5 @@
 import { HealthStatus, ProviderConnectionMethod, ProviderStatus, SyncState } from "@prisma/client";
+import { getVercelConnectionSnapshot } from "@/lib/services/vercel-service";
 
 type VerificationInput = {
   providerName: string;
@@ -29,23 +30,6 @@ function isVercelProvider(providerName: string) {
   return providerName.trim().toLowerCase().includes("vercel");
 }
 
-async function fetchJson<T>(url: string, token: string) {
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    cache: "no-store"
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Provider verification failed (${response.status}): ${body || "Unknown response."}`);
-  }
-
-  return (await response.json()) as T;
-}
-
 async function verifyVercelToken({
   apiToken,
   externalProjectId,
@@ -55,37 +39,15 @@ async function verifyVercelToken({
     throw new Error("A Vercel API token is required to connect automatically.");
   }
 
-  const [userResult, teamsResult, projectsResult] = await Promise.all([
-    fetchJson<{ user?: { id?: string; username?: string; email?: string; name?: string } }>(
-      "https://api.vercel.com/v2/user",
-      apiToken
-    ),
-    fetchJson<{ teams?: Array<{ id: string; slug?: string; name?: string }> }>(
-      "https://api.vercel.com/v2/teams",
-      apiToken
-    ).catch(() => ({ teams: [] })),
-    fetchJson<{
-      projects?: Array<{
-        id: string;
-        name?: string;
-        accountId?: string;
-      }>;
-    }>("https://api.vercel.com/v10/projects", apiToken).catch(() => ({ projects: [] }))
-  ]);
-
-  const teams = teamsResult.teams ?? [];
-  const projects = projectsResult.projects ?? [];
-  const selectedProject =
-    projects.find((project) => project.id === externalProjectId || project.name === externalProjectId) ??
-    (projects.length === 1 ? projects[0] : undefined);
-  const selectedTeam =
-    teams.find((team) => team.id === externalTeamId || team.slug === externalTeamId || team.name === externalTeamId) ??
-    (teams.length === 1 ? teams[0] : undefined);
-  const accountLabel =
-    userResult.user?.name ??
-    userResult.user?.username ??
-    userResult.user?.email ??
-    "Verified Vercel account";
+  const snapshot = await getVercelConnectionSnapshot({
+    apiToken,
+    externalProjectId,
+    externalTeamId
+  });
+  const selectedProject = snapshot.selectedProject ?? undefined;
+  const selectedTeam = snapshot.selectedTeam ?? undefined;
+  const projects = snapshot.projects;
+  const accountLabel = snapshot.accountLabel;
 
   return {
     status: ProviderStatus.CONNECTED,
@@ -96,23 +58,22 @@ async function verifyVercelToken({
       : accountLabel,
     externalProjectId: selectedProject?.id,
     externalTeamId: selectedTeam?.id,
-    dashboardUrl:
-      selectedProject && selectedTeam?.slug
-        ? `https://vercel.com/${selectedTeam.slug}/${selectedProject.name ?? selectedProject.id}`
-        : "https://vercel.com/dashboard",
-    billingUrl: "https://vercel.com/account/billing",
+    dashboardUrl: snapshot.dashboardUrl,
+    billingUrl: snapshot.billingUrl,
     tokenMetadata: {
       verifiedProvider: "vercel",
       verifiedAccount: accountLabel,
       projectCount: projects.length,
-      teamCount: teams.length
+      teamCount: snapshot.teams.length
     },
     metadata: {
       accountLabel,
-      vercelUserId: userResult.user?.id ?? "unknown",
+      vercelUserId: snapshot.user.id ?? "unknown",
       selectedProjectName: selectedProject?.name ?? "not selected",
       selectedTeamSlug: selectedTeam?.slug ?? "personal",
-      availableProjects: projects.slice(0, 5).map((project) => project.name ?? project.id).join(", ") || "none"
+      availableProjects: projects.slice(0, 5).map((project) => project.name ?? project.id).join(", ") || "none",
+      availableTeamSlugs:
+        snapshot.teams.slice(0, 5).map((team) => team.slug ?? team.name ?? team.id).join(", ") || "none"
     },
     notes:
       projects.length > 1 && !selectedProject

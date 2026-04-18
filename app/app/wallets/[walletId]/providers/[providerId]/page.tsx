@@ -36,6 +36,8 @@ export default async function ProviderDetailPage({
     slug: provider.templateSlug ?? undefined,
     providerName: provider.name
   });
+  const needsProjectSelection =
+    provider.templateSlug === "vercel" && provider.metadata.selectedProjectName === "not selected";
 
   return (
     <AppShell
@@ -58,6 +60,12 @@ export default async function ProviderDetailPage({
           {health === "checked" ? (
             <div className="rounded-md border border-success/30 bg-success/5 p-4 text-sm text-success">
               Live health check completed. RAEYL refreshed this tool with the latest data it could verify.
+            </div>
+          ) : null}
+          {needsProjectSelection ? (
+            <div className="rounded-md border border-warning/30 bg-warning/5 p-4 text-sm text-warning">
+              This Vercel account is verified, but the wallet is not locked to one project yet. Reconnect it with the
+              right project so health checks and links stay precise.
             </div>
           ) : null}
 
@@ -113,6 +121,15 @@ export default async function ProviderDetailPage({
                   <a href={provider.supportUrl} target="_blank" rel="noopener noreferrer">
                     Support docs
                   </a>
+                </Button>
+              ) : null}
+              {canManage ? (
+                <Button asChild variant="ghost">
+                  <Link
+                    href={`/app/wallets/${walletId}/providers/new?template=${provider.templateSlug ?? "custom"}${provider.websiteId ? `&websiteId=${provider.websiteId}` : ""}`}
+                  >
+                    Reconnect this tool
+                  </Link>
                 </Button>
               ) : null}
               <form action={refreshProviderHealth}>

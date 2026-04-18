@@ -279,8 +279,10 @@ export async function createProviderConnection(formData: FormData) {
     redirect(`/app/wallets/${walletId}/providers/new?formError=${encodeURIComponent(msg)}`);
   }
   const parsed = connResult.data;
-  const apiToken = String(formData.get("apiToken") ?? "").trim();
-  const secureCredential = String(formData.get("secureCredential") ?? "").trim();
+  const apiToken =
+    parsed.connectionMethod === "API_TOKEN" ? String(formData.get("apiToken") ?? "").trim() : "";
+  const secureCredential =
+    parsed.connectionMethod === "SECURE_LINK" ? String(formData.get("secureCredential") ?? "").trim() : "";
   const providerTemplateSlug = String(formData.get("providerTemplateSlug") ?? "").trim() || undefined;
 
   await requireWalletCapability(parsed.walletId, session.user.id, "provider.write");

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 
 import { FloatingChat } from "@/components/app/floating-chat";
+import { NavLink } from "@/components/app/nav-link";
 import { RaeylLogo } from "@/components/ui/raeyl-logo";
 import { logOut } from "@/lib/actions/auth";
 import { requireSession } from "@/lib/auth/access";
@@ -159,49 +160,35 @@ export async function AppShell({
               </div>
             )}
             <nav className="space-y-1">
-              {nav.map((item) => (
-                <Link
+              {nav.map((item, idx) => (
+                <NavLink
                   key={item.href}
                   href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
-                  )}
+                  exact={idx === 0}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-4 w-4 flex-shrink-0" />
                   {item.label}
-                </Link>
+                </NavLink>
               ))}
               <div className="soft-divider mt-4 pt-4">
-                <Link
-                  href="/app/notifications"
-                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
-                >
-                  <Bell className="h-4 w-4" />
+                <NavLink href="/app/notifications">
+                  <Bell className="h-4 w-4 flex-shrink-0" />
                   Notifications
-                </Link>
-                <Link
-                  href="/app/wallets"
-                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
-                >
-                  <PanelLeft className="h-4 w-4" />
+                </NavLink>
+                <NavLink href="/app/wallets" exact>
+                  <PanelLeft className="h-4 w-4 flex-shrink-0" />
                   All wallets
-                </Link>
+                </NavLink>
                 {viewer?.type === "ADMIN" ? (
-                  <Link
-                    href="/admin"
-                    className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
-                  >
-                    <Shield className="h-4 w-4" />
+                  <NavLink href="/admin">
+                    <Shield className="h-4 w-4 flex-shrink-0" />
                     Admin console
-                  </Link>
+                  </NavLink>
                 ) : null}
-                <Link
-                  href="/app/settings/account"
-                  className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition hover:bg-white/[0.05] hover:text-foreground"
-                >
-                  <Settings2 className="h-4 w-4" />
+                <NavLink href="/app/settings/account">
+                  <Settings2 className="h-4 w-4 flex-shrink-0" />
                   Account settings
-                </Link>
+                </NavLink>
                 <form action={logOut}>
                   <button
                     type="submit"
