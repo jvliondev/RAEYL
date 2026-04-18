@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/auth/access";
 import { getWalletDashboardData } from "@/lib/data/wallets";
 import { getWalletIntelligence } from "@/lib/services/wallet-intelligence";
 import type { WalletRole } from "@/lib/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { ActionCard } from "@/components/app/action-card";
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/app/empty-state";
@@ -52,6 +52,16 @@ export default async function WalletDashboardPage({
   const allEditRoutes = wallet.websites.flatMap((website) =>
     website.editRoutes.map((route) => ({ ...route, websiteName: website.name }))
   );
+
+  const nextActions = [intelligence.primaryAction, ...intelligence.supportingActions].filter(
+    (a): a is NonNullable<typeof a> => a != null
+  );
+  const gridClass =
+    nextActions.length === 1
+      ? "grid gap-2.5"
+      : nextActions.length === 3
+        ? "grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3"
+        : "grid gap-2.5 sm:grid-cols-2";
 
   if (isOwner) {
     return (
@@ -350,23 +360,27 @@ export default async function WalletDashboardPage({
           <Card>
             <CardHeader>
               <div>
+                <p className="app-eyebrow mb-1">Recommended</p>
                 <CardTitle>Best next steps</CardTitle>
                 <CardDescription>
                   RAEYL picks the most useful next move based on what is configured and what is still missing.
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-2.5 sm:grid-cols-2">
-              {[intelligence.primaryAction, ...intelligence.supportingActions]
-                .filter(Boolean)
-                .map((action) => (
+            <CardContent>
+              <div className={gridClass}>
+                {nextActions.map((action, i) => (
                   <ActionCard
-                    key={action!.label}
-                    href={action!.href}
-                    label={action!.label}
-                    description={action!.description}
+                    key={action.label}
+                    href={action.href}
+                    label={action.label}
+                    description={action.description}
+                    rank={i + 1}
+                    tone={action.tone}
+                    className={nextActions.length === 3 && i === 2 ? "sm:col-span-2 lg:col-span-1" : undefined}
                   />
                 ))}
+              </div>
             </CardContent>
           </Card>
 
