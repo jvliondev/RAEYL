@@ -150,7 +150,7 @@ function mapWalletRole(value: WalletRole): WalletMember["role"] {
 
 function ensureCapability(role: WalletRole, capability: Capability) {
   if (!hasCapability(role, capability)) {
-    throw new Error("You do not have permission to view this area.");
+    notFound();
   }
 }
 
@@ -1194,7 +1194,8 @@ export async function getWalletAlertsData(walletId: string, userId: string) {
     walletContext: {
       id: data.wallet.id,
       businessName: data.wallet.businessName,
-      planTier: data.wallet.planTier
+      planTier: data.wallet.planTier,
+      role: data.membershipRole.toLowerCase()
     },
     alerts: data.wallet.alerts
   };
