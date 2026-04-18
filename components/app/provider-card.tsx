@@ -39,6 +39,30 @@ function statusLabel(provider: ProviderRecord) {
   return provider.status;
 }
 
+function statusNote(provider: ProviderRecord) {
+  if (provider.connectionMethod?.toLowerCase() === "api token" && provider.syncState?.toLowerCase().includes("pending")) {
+    return "Live verification is still waiting to run.";
+  }
+
+  if (provider.connectionMethod?.toLowerCase() === "manual") {
+    return "This record explains the tool and links out to the real dashboard.";
+  }
+
+  if (provider.health === "healthy") {
+    return "This connection is in good shape.";
+  }
+
+  if (provider.health === "attention") {
+    return "This tool is connected, but it still needs a quick review.";
+  }
+
+  if (provider.health === "issue" || provider.health === "disconnected") {
+    return "This tool needs intervention before the wallet feels complete.";
+  }
+
+  return "Connection details are available in the tool view.";
+}
+
 export function ProviderCard({ provider, walletId }: { provider: ProviderRecord; walletId: string }) {
   return (
     <Card>
@@ -65,6 +89,7 @@ export function ProviderCard({ provider, walletId }: { provider: ProviderRecord;
           <span className="text-muted">Estimated cost</span>
           <span>{formatCurrency(provider.monthlyCost)}</span>
         </div>
+        <p className="text-xs text-muted">{statusNote(provider)}</p>
         <Link
           href={`/app/wallets/${walletId}/providers/${provider.id}`}
           className="text-sm font-medium text-primary"

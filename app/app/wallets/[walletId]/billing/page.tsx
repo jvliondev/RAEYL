@@ -125,7 +125,7 @@ export default async function BillingPage({
                           <div className="text-sm text-muted">{record.description}</div>
                           <div className="mt-2 text-xs text-muted">
                             {record.cadence}
-                            {record.renewalDate ? ` • Next date ${formatDate(record.renewalDate)}` : ""}
+                            {record.renewalDate ? ` · Next date ${formatDate(record.renewalDate)}` : ""}
                           </div>
                         </div>
                         <div className="text-right">
@@ -221,7 +221,7 @@ export default async function BillingPage({
                       <div className="font-medium">{record.label}</div>
                       <div className="text-muted">
                         {formatCurrency(record.amount, record.currency)}
-                        {record.renewalDate ? ` • ${formatDate(record.renewalDate)}` : ""}
+                        {record.renewalDate ? ` · ${formatDate(record.renewalDate)}` : ""}
                       </div>
                       {record.invoiceUrl ? (
                         <a href={record.invoiceUrl} className="mt-2 inline-block text-primary">
@@ -258,7 +258,7 @@ export default async function BillingPage({
                     <div key={record.id} className="rounded-md border border-white/10 p-4 text-sm">
                       <div className="font-medium">{record.label}</div>
                       <div className="text-muted">
-                        {record.cadence} renewal • {formatDate(record.renewalDate!)}
+                        {record.cadence} renewal · {formatDate(record.renewalDate!)}
                       </div>
                     </div>
                   ))

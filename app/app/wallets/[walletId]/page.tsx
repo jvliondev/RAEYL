@@ -1,8 +1,9 @@
 import Link from "next/link";
 
 import { requireSession } from "@/lib/auth/access";
-import { hasCapability } from "@/lib/auth/permissions";
 import { getWalletDashboardData } from "@/lib/data/wallets";
+import { getWalletIntelligence } from "@/lib/services/wallet-intelligence";
+import type { WalletRole } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ActionCard } from "@/components/app/action-card";
 import { AppShell } from "@/components/app/app-shell";
@@ -26,106 +27,120 @@ export default async function WalletDashboardPage({
   const session = await requireSession();
   const { wallet, membershipRole } = await getWalletDashboardData(walletId, session.user.id);
 
+  const role = membershipRole.toLowerCase();
   const isOwner = membershipRole.toUpperCase() === "WALLET_OWNER";
   const walletContext = {
     id: wallet.id,
     businessName: wallet.businessName,
     planTier: wallet.planTier,
-    role: membershipRole.toLowerCase()
+    role
   };
 
-  // Gather all edit routes across all websites
-  const allEditRoutes = wallet.websites.flatMap((w) =>
-    w.editRoutes.map((r) => ({ ...r, websiteName: w.name, websiteId: w.id }))
+  const intelligence = getWalletIntelligence({
+    role: role as WalletRole,
+    walletId: wallet.id,
+    firstWebsiteId: wallet.websites[0]?.id ?? null,
+    websites: wallet.websites,
+    providers: wallet.providers,
+    billing: wallet.billing,
+    alerts: wallet.alerts,
+    ownerAccepted: wallet.handoffStatus.toLowerCase() === "completed"
+  });
+
+  const allEditRoutes = wallet.websites.flatMap((website) =>
+    website.editRoutes.map((route) => ({ ...route, websiteName: website.name }))
   );
-  const primaryRoute = allEditRoutes.find((r) => r.isPrimary);
+  const primaryRoute = allEditRoutes.find((route) => route.isPrimary);
 
   if (isOwner) {
-    // ─── OWNER VIEW ─────────────────────────────────────────────────────────────
     return (
       <AppShell
         title={`Welcome to your ${wallet.businessName} website`}
-        description="Everything your website needs — connected, explained, and ready when you need it."
+        description="Everything your website needs, connected, explained, and ready when you need it."
         walletContext={walletContext}
       >
-        {handoff === "complete" && (
+        {handoff === "complete" ? (
           <div className="mb-6 rounded-md border border-success/30 bg-success/5 p-5">
             <div className="font-medium text-success">Your website is officially handed off.</div>
             <p className="mt-1 text-sm text-muted">
-              Your developer has completed the setup. Everything below is yours to keep.
+              Your developer has completed the setup. Everything below is now organized for you in one place.
             </p>
           </div>
-        )}
+        ) : null}
 
         <div className="space-y-8">
-          {/* Primary CTA */}
-          {primaryRoute && (
+          {intelligence.primaryAction ? (
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <div className="font-semibold">{primaryRoute.label}</div>
-                  <p className="text-sm text-muted mt-1">
-                    {primaryRoute.description}
-                  </p>
+                  <div className="font-semibold">{intelligence.primaryAction.label}</div>
+                  <p className="mt-1 text-sm text-muted">{intelligence.primaryAction.description}</p>
+                  <p className="mt-3 text-xs text-muted">{intelligence.summary}</p>
                 </div>
                 <Button asChild className="shrink-0">
-                  <a href={primaryRoute.destinationUrl} target="_blank" rel="noopener noreferrer">
-                    Edit your website
+                  <a
+                    href={intelligence.primaryAction.href}
+                    target={intelligence.primaryAction.href.startsWith("http") ? "_blank" : undefined}
+                    rel={intelligence.primaryAction.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                  >
+                    {intelligence.primaryAction.label}
                   </a>
                 </Button>
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
-          {/* Alerts */}
-          {wallet.alerts.length > 0 && (
+          {wallet.alerts.length > 0 ? (
             <Card className="border-warning/30">
               <CardHeader>
                 <CardTitle>Something needs your attention</CardTitle>
+                <CardDescription>
+                  Nothing here is technical for the sake of it. Each item includes what happened and what to do next.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {wallet.alerts.slice(0, 3).map((alert) => (
                   <div key={alert.id} className="rounded-md border border-white/10 p-4">
                     <div className="text-sm font-medium">{alert.title}</div>
-                    <p className="text-sm text-muted mt-1">{alert.message}</p>
-                    {alert.recommendation && (
-                      <p className="text-xs text-primary mt-2">{alert.recommendation}</p>
-                    )}
+                    <p className="mt-1 text-sm text-muted">{alert.message}</p>
+                    {alert.recommendation ? (
+                      <p className="mt-2 text-xs text-primary">{alert.recommendation}</p>
+                    ) : null}
                   </div>
                 ))}
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
-          {/* Other edit paths */}
-          {allEditRoutes.filter((r) => !r.isPrimary).length > 0 && (
+          {allEditRoutes.filter((route) => !route.isPrimary).length > 0 ? (
             <div>
               <SectionHeading
                 title="Other things you can update"
-                description="These are specific areas of your website you can edit directly."
+                description="These are the specific parts of the website that already have a direct editing path."
               />
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {allEditRoutes.filter((r) => !r.isPrimary).map((route) => (
-                  <a
-                    key={route.id}
-                    href={route.destinationUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col gap-1 rounded-md border border-white/10 p-4 hover:bg-white/5 hover:border-white/20 transition-all"
-                  >
-                    <div className="text-sm font-medium">{route.label}</div>
-                    <p className="text-xs text-muted">{route.description}</p>
-                  </a>
-                ))}
+                {allEditRoutes
+                  .filter((route) => !route.isPrimary)
+                  .map((route) => (
+                    <a
+                      key={route.id}
+                      href={route.destinationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col gap-1 rounded-md border border-white/10 p-4 transition-all hover:border-white/20 hover:bg-white/5"
+                    >
+                      <div className="text-sm font-medium">{route.label}</div>
+                      <p className="text-xs text-muted">{route.description}</p>
+                    </a>
+                  ))}
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* What powers your site */}
           <div>
             <SectionHeading
               title="What powers your website"
-              description="These are the services that keep your website running. Your developer manages them on your behalf."
+              description="Every service is explained in plain language, so you know what it does and when it matters."
             />
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
               {wallet.providers.length ? (
@@ -133,16 +148,24 @@ export default async function WalletDashboardPage({
                   <div key={provider.id} className="rounded-md border border-white/10 p-5 space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="font-medium">{provider.name}</div>
-                      <Badge variant={
-                        provider.health === "healthy" ? "success" :
-                        provider.health === "issue" ? "danger" : "neutral"
-                      }>
-                        {provider.health === "healthy" ? "Running" :
-                         provider.health === "issue" ? "Needs attention" : "Connected"}
+                      <Badge
+                        variant={
+                          provider.health === "healthy"
+                            ? "success"
+                            : provider.health === "issue"
+                              ? "danger"
+                              : "neutral"
+                        }
+                      >
+                        {provider.health === "healthy"
+                          ? "Running"
+                          : provider.health === "issue"
+                            ? "Needs attention"
+                            : "Connected"}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted">{provider.ownerDescription}</p>
-                    {provider.dashboardUrl && (
+                    {provider.dashboardUrl ? (
                       <a
                         href={provider.dashboardUrl}
                         target="_blank"
@@ -151,27 +174,26 @@ export default async function WalletDashboardPage({
                       >
                         Open dashboard →
                       </a>
-                    )}
+                    ) : null}
                   </div>
                 ))
               ) : (
                 <EmptyState
-                  title="No connected tools yet"
-                  description="Your developer hasn't connected any tools yet."
+                  title="Your website services will appear here"
+                  description="Once the main website tools are connected, you will see what each one does and where it lives."
                 />
               )}
             </div>
           </div>
 
-          {/* Costs */}
-          {wallet.billing.length > 0 && (
+          {wallet.billing.length > 0 ? (
             <Card>
               <CardHeader>
                 <div>
                   <CardTitle>Your website costs</CardTitle>
                   <CardDescription>
-                    What you pay each month to keep your website running.
-                    Total: {formatCurrency(wallet.monthlyCost)}/month estimated.
+                    What you pay each month to keep your website running. Total:{" "}
+                    {formatCurrency(wallet.monthlyCost)}/month estimated.
                   </CardDescription>
                 </div>
               </CardHeader>
@@ -185,26 +207,23 @@ export default async function WalletDashboardPage({
                       <div className="text-sm font-medium">{record.label}</div>
                       <div className="text-xs text-muted">{record.description}</div>
                     </div>
-                    <div className="text-sm shrink-0">{formatCurrency(record.amount)}/mo</div>
+                    <div className="shrink-0 text-sm">{formatCurrency(record.amount)}/mo</div>
                   </div>
                 ))}
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
-          {/* Support */}
           <Card>
             <CardHeader>
               <CardTitle>Need help?</CardTitle>
               <CardDescription>
-                Your developer is here to help with anything your website needs.
+                Your support history and next request both live in one place, so you never have to guess where to ask.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild variant="secondary">
-                <Link href={`/app/wallets/${walletId}/support`}>
-                  Submit a support request
-                </Link>
+                <Link href={`/app/wallets/${walletId}/support`}>Submit a support request</Link>
               </Button>
             </CardContent>
           </Card>
@@ -213,50 +232,20 @@ export default async function WalletDashboardPage({
     );
   }
 
-  // ─── DEVELOPER VIEW ────────────────────────────────────────────────────────────
-  const visibleActions = [
-    {
-      label: "Edit website",
-      description: "Open the main editing path for website updates.",
-      href: wallet.websites[0]
-        ? `/app/wallets/${wallet.id}/websites/${wallet.websites[0].id}`
-        : `/app/wallets/${wallet.id}/setup`,
-      visible: hasCapability(membershipRole.toLowerCase(), "wallet.read")
-    },
-    {
-      label: "Review what needs attention",
-      description: "See the items that need a quick review right now.",
-      href: `/app/wallets/${wallet.id}/alerts`,
-      visible: hasCapability(membershipRole.toLowerCase(), "wallet.read")
-    },
-    {
-      label: "Manage people and access",
-      description: "Review who can access this wallet and what they can do.",
-      href: `/app/wallets/${wallet.id}/access`,
-      visible: hasCapability(membershipRole.toLowerCase(), "access.manage")
-    },
-    {
-      label: "Review costs and billing",
-      description: "See what each service costs and where each bill is managed.",
-      href: `/app/wallets/${wallet.id}/billing`,
-      visible: hasCapability(membershipRole.toLowerCase(), "billing.read")
-    }
-  ].filter((action) => action.visible);
-
   return (
     <AppShell
       title="Your website control center"
-      description="See what powers your website, what needs attention, and where to go when you need to make a change."
+      description="See what powers the site, what still needs setup, and the clearest next move for handoff."
       walletContext={walletContext}
     >
       <div className="space-y-8">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Website status"
-            value={wallet.setupStatus}
-            supporting="A clear summary of the current wallet state."
-            tone={wallet.urgentAlerts ? "warning" : "success"}
-            tag={wallet.alerts.length ? `${wallet.alerts.length} open` : "Healthy"}
+            label="Readiness score"
+            value={`${intelligence.score}%`}
+            supporting={intelligence.summary}
+            tone={intelligence.score >= 85 ? "success" : intelligence.score >= 60 ? "accent" : "warning"}
+            tag={intelligence.scoreLabel}
           />
           <StatCard
             label="Connected tools"
@@ -274,56 +263,109 @@ export default async function WalletDashboardPage({
           <StatCard
             label="Needs attention"
             value={String(wallet.urgentAlerts)}
-            supporting="Nothing important is buried or easy to miss."
+            supporting="Anything that weakens trust or handoff stays visible."
             tone="warning"
             tag="Review"
           />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.25fr_0.75fr]">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>What would you like to do?</CardTitle>
-                <CardDescription>RAEYL will guide you to the right place without making you guess.</CardDescription>
+                <CardTitle>Best next steps</CardTitle>
+                <CardDescription>
+                  RAEYL picks the most useful next move based on what is already configured and what is still missing.
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2">
-              {visibleActions.map((action) => (
-                <ActionCard key={action.label} {...action} />
-              ))}
+              {[
+                intelligence.primaryAction,
+                ...intelligence.supportingActions
+              ]
+                .filter(Boolean)
+                .map((action) => (
+                  <ActionCard
+                    key={action!.label}
+                    href={action!.href}
+                    label={action!.label}
+                    description={action!.description}
+                  />
+                ))}
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Attention and updates</CardTitle>
-                <CardDescription>Anything that needs a review appears here with a clear next step.</CardDescription>
+                <CardTitle>Readiness checklist</CardTitle>
+                <CardDescription>
+                  A clean handoff needs the basics documented, connected, and easy for the owner to trust.
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {wallet.alerts.length ? (
-                wallet.alerts.slice(0, 2).map((alert) => (
-                  <div key={alert.id} className="rounded-md border border-white/10 bg-white/[0.03] p-4">
-                    <div className="mb-1 text-sm font-medium">{alert.title}</div>
-                    <p className="text-sm text-muted">{alert.message}</p>
-                    <p className="mt-2 text-xs text-primary">{alert.recommendation}</p>
+              {intelligence.checklist.map((item) => (
+                <div
+                  key={item.key}
+                  className="rounded-md border border-white/10 bg-white/[0.03] p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm font-medium">{item.label}</div>
+                      <p className="mt-1 text-sm text-muted">{item.description}</p>
+                    </div>
+                    <Badge variant={item.complete ? "success" : item.priority === "critical" ? "warning" : "neutral"}>
+                      {item.complete ? "Ready" : "Missing"}
+                    </Badge>
                   </div>
-                ))
-              ) : (
-                <EmptyState
-                  title="Everything looks good right now."
-                  description="If something needs your attention, it will appear here with the next step."
-                />
-              )}
+                  {!item.complete && item.href ? (
+                    <div className="mt-3">
+                      <Button asChild variant="secondary" className="h-8 px-3 text-xs">
+                        <Link href={item.href}>Open</Link>
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
 
+        {wallet.alerts.length > 0 || intelligence.duplicateProviders.length > 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Attention and cleanup</CardTitle>
+              <CardDescription>
+                Fixing these items makes the wallet feel clearer and more trustworthy to the owner.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {wallet.alerts.slice(0, 2).map((alert) => (
+                <div key={alert.id} className="rounded-md border border-white/10 bg-white/[0.03] p-4">
+                  <div className="mb-1 text-sm font-medium">{alert.title}</div>
+                  <p className="text-sm text-muted">{alert.message}</p>
+                  <p className="mt-2 text-xs text-primary">{alert.recommendation}</p>
+                </div>
+              ))}
+              {intelligence.duplicateProviders.map((providerName) => (
+                <div key={providerName} className="rounded-md border border-white/10 bg-white/[0.03] p-4">
+                  <div className="mb-1 text-sm font-medium">Possible duplicate tool entry</div>
+                  <p className="text-sm text-muted">
+                    {providerName} appears more than once. Clean this up so the owner sees one clear record per service.
+                  </p>
+                  <p className="mt-2 text-xs text-primary">Review connected tools and merge or remove duplicates.</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
+
         <div className="space-y-4">
           <SectionHeading
             title="How your website is set up"
-            description="Each connected tool includes a simple explanation, current status, and the right place to go when action is needed."
+            description="Each connected tool explains what it does, how it is connected, and whether it still needs verification."
           />
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             {wallet.providers.length ? (
@@ -333,7 +375,12 @@ export default async function WalletDashboardPage({
             ) : (
               <EmptyState
                 title="No connected tools yet"
-                description="Add the main website services so the owner can see how the site is powered."
+                description="Start with hosting and content editing so the wallet becomes instantly useful."
+                primaryAction={
+                  <Button asChild>
+                    <Link href={`/app/wallets/${wallet.id}/providers/new`}>Connect the first tool</Link>
+                  </Button>
+                }
               />
             )}
           </div>
@@ -344,7 +391,9 @@ export default async function WalletDashboardPage({
             <CardHeader>
               <div>
                 <CardTitle>Your website costs</CardTitle>
-                <CardDescription>See what each service is for, what it costs, and where each bill is managed.</CardDescription>
+                <CardDescription>
+                  Clear cost visibility helps the owner understand value, renewals, and who manages what.
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -364,11 +413,12 @@ export default async function WalletDashboardPage({
               ) : (
                 <EmptyState
                   title="No costs recorded yet"
-                  description="Tracked website costs will appear here once billing records are added."
+                  description="Add billing records so the owner can see the real monthly website picture."
                 />
               )}
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader>
               <div>

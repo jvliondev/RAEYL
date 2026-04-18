@@ -13,58 +13,71 @@ import {
   Siren,
   Workflow
 } from "lucide-react";
+
 import { FloatingChat } from "@/components/app/floating-chat";
 import { RaeylLogo } from "@/components/ui/raeyl-logo";
-
 import { logOut } from "@/lib/actions/auth";
-
 import { requireSession } from "@/lib/auth/access";
 import { hasCapability, type Capability } from "@/lib/auth/permissions";
 import { listWalletsForUser } from "@/lib/data/wallets";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
 
-function buildNav(walletId: string, websiteId?: string) {
-  return [
+function buildNav(walletId: string, role?: string, websiteId?: string) {
+  const isOwner = role === "wallet_owner";
+  const isDeveloper = role === "developer";
+  const isBillingManager = role === "billing_manager";
+
+  const items = [
     { href: `/app/wallets/${walletId}`, label: "Overview", icon: Gauge, capability: "wallet.read" as Capability },
     {
       href: websiteId ? `/app/wallets/${walletId}/websites/${websiteId}` : `/app/wallets/${walletId}`,
-      label: "Website",
+      label: isOwner ? "Website details" : "Website",
       icon: Workflow,
       capability: "wallet.read" as Capability
     },
     {
       href: `/app/wallets/${walletId}/providers`,
-      label: "Connected tools",
+      label: isOwner ? "Website services" : "Connected tools",
       icon: PanelLeft,
       capability: "provider.read" as Capability
     },
     {
       href: `/app/wallets/${walletId}/billing`,
-      label: "Costs and billing",
+      label: isBillingManager ? "Billing" : "Costs and billing",
       icon: CreditCard,
       capability: "billing.read" as Capability
     },
     {
       href: `/app/wallets/${walletId}/access`,
-      label: "People and access",
+      label: isOwner ? "People and access" : "Team access",
       icon: Shield,
       capability: "access.manage" as Capability
     },
     {
       href: `/app/wallets/${walletId}/handoff`,
-      label: "Handoff",
+      label: isDeveloper ? "Handoff" : "Ownership handoff",
       icon: Handshake,
       capability: "handoff.manage" as Capability
     },
-    { href: `/app/wallets/${walletId}/alerts`, label: "Attention", icon: Siren, capability: "wallet.read" as Capability },
+    {
+      href: `/app/wallets/${walletId}/alerts`,
+      label: isOwner ? "What needs attention" : "Attention",
+      icon: Siren,
+      capability: "wallet.read" as Capability
+    },
     {
       href: `/app/wallets/${walletId}/activity`,
-      label: "Timeline",
+      label: isOwner ? "Recent activity" : "Timeline",
       icon: ClipboardList,
       capability: "wallet.read" as Capability
     },
-    { href: `/app/wallets/${walletId}/support`, label: "Support", icon: LifeBuoy, capability: "support.read" as Capability },
+    {
+      href: `/app/wallets/${walletId}/support`,
+      label: "Support",
+      icon: LifeBuoy,
+      capability: "support.read" as Capability
+    },
     {
       href: `/app/wallets/${walletId}/settings`,
       label: "Settings",
@@ -72,6 +85,8 @@ function buildNav(walletId: string, websiteId?: string) {
       capability: "settings.read" as Capability
     }
   ];
+
+  return isOwner ? items.filter((item) => item.href !== `/app/wallets/${walletId}/handoff`) : items;
 }
 
 export async function AppShell({
@@ -112,11 +127,12 @@ export async function AppShell({
     role: walletContext?.role
   };
   const nav = wallet.id
-    ? buildNav(wallet.id, wallet.websiteId).filter((item) =>
+    ? buildNav(wallet.id, wallet.role, wallet.websiteId).filter((item) =>
         item.capability && wallet.role ? hasCapability(wallet.role, item.capability) : true
       )
     : [];
   const walletTrail = wallet.id ? "Wallet" : "Platform";
+  const roleLabel = wallet.role ? wallet.role.replace("_", " ") : null;
 
   return (
     <div className="min-h-screen">
@@ -130,7 +146,10 @@ export async function AppShell({
               <div className="mb-6 rounded-lg border border-white/10 bg-white/[0.03] p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted">Current wallet</div>
                 <div className="mt-2 font-medium">{wallet.businessName}</div>
-                <div className="text-sm text-muted">{wallet.planTier} plan • ownership wallet</div>
+                <div className="text-sm text-muted">
+                  {wallet.planTier} plan
+                  {roleLabel ? ` · ${roleLabel}` : ""}
+                </div>
               </div>
             ) : (
               <div className="mb-6 rounded-lg border border-white/10 bg-white/[0.03] p-4">
@@ -214,7 +233,6 @@ export async function AppShell({
                 </div>
               </div>
             ) : null}
-
           </div>
         </aside>
         <main className="min-w-0">
@@ -223,7 +241,7 @@ export async function AppShell({
               <div>
                 <div className="mb-1 text-xs uppercase tracking-[0.16em] text-muted">
                   {walletTrail}
-                  {wallet.id ? ` • ${wallet.businessName}` : ""}
+                  {wallet.id ? ` · ${wallet.businessName}` : ""}
                 </div>
                 <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
                 {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
@@ -242,14 +260,14 @@ export async function AppShell({
                   {wallet.id ? "Wallet home" : "Wallets"}
                 </Link>
                 <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-muted">
-                  <Link href="/app/settings/account" className="hover:text-foreground transition">
+                  <Link href="/app/settings/account" className="transition hover:text-foreground">
                     {wallet.userName}
                   </Link>
                   <form action={logOut}>
                     <button
                       type="submit"
                       title="Sign out"
-                      className="flex items-center text-muted hover:text-foreground transition"
+                      className="flex items-center text-muted transition hover:text-foreground"
                     >
                       <LogOut className="h-3.5 w-3.5" />
                     </button>
@@ -262,7 +280,6 @@ export async function AppShell({
         </main>
       </div>
 
-      {/* Floating AI assistant — fixed bottom-right, present on all wallet pages */}
       {wallet.id ? <FloatingChat walletId={wallet.id} /> : null}
     </div>
   );
