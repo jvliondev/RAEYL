@@ -23,13 +23,8 @@ export default async function SupportPage({
   const { walletId } = await params;
   const resolvedSearchParams = await searchParams;
   const session = await requireSession();
-  const { walletContext, supportCases, providers } = await getWalletSupportData(
-    walletId,
-    session.user.id
-  );
-  const canWriteSupport = walletContext.role
-    ? hasCapability(walletContext.role, "support.write")
-    : false;
+  const { walletContext, supportCases, providers } = await getWalletSupportData(walletId, session.user.id);
+  const canWriteSupport = walletContext.role ? hasCapability(walletContext.role, "support.write") : false;
   const updated = typeof resolvedSearchParams.updated === "string" ? resolvedSearchParams.updated : null;
   const submitted = typeof resolvedSearchParams.submitted === "string";
   const formError = typeof resolvedSearchParams.formError === "string" ? resolvedSearchParams.formError : null;
@@ -41,20 +36,19 @@ export default async function SupportPage({
       walletContext={walletContext}
     >
       <div className="space-y-6">
-        {formError && (
+        {formError ? (
           <Card>
             <CardContent className="py-4 text-sm text-destructive">{formError}</CardContent>
           </Card>
-        )}
+        ) : null}
         {submitted || updated ? (
           <Card>
             <CardContent className="py-4 text-sm text-muted">
-              {updated === "reply"
-                ? "Your support reply was added."
-                : "Your support request was submitted."}
+              {updated === "reply" ? "Your support reply was added." : "Your support request was submitted."}
             </CardContent>
           </Card>
         ) : null}
+
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
             <CardHeader>
@@ -71,36 +65,35 @@ export default async function SupportPage({
                       <div>
                         <div className="font-medium">{item.subject}</div>
                         <div className="text-sm text-muted">
-                          {item.status} • {item.priority} priority • {formatDate(item.createdAt)}
+                          {item.status} · {item.priority} priority · {formatDate(item.createdAt)}
                         </div>
                         <div className="mt-1 text-xs text-muted">
                           {item.category}
-                          {item.relatedProvider ? ` • ${item.relatedProvider}` : ""}
-                          {item.requester ? ` • Opened by ${item.requester}` : ""}
+                          {item.relatedProvider ? ` · ${item.relatedProvider}` : ""}
+                          {item.requester ? ` · Opened by ${item.requester}` : ""}
                         </div>
                       </div>
                     </div>
+
                     {item.recentMessages.length ? (
                       <div className="mt-4 space-y-3">
                         {item.recentMessages.map((message) => (
                           <div key={message.id} className="rounded-md border border-white/10 bg-white/[0.02] p-3">
                             <div className="text-sm">{message.body}</div>
                             <div className="mt-1 text-xs text-muted">
-                              {message.author} • {formatDate(message.createdAt)}
+                              {message.author} · {formatDate(message.createdAt)}
+                              {message.isInternal ? " · internal note" : ""}
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : null}
+
                     {canWriteSupport ? (
                       <form action={addSupportReply} className="mt-4 space-y-3">
                         <input type="hidden" name="supportRequestId" value={item.id} />
                         <FormField label="Add reply">
-                          <Textarea
-                            name="body"
-                            placeholder="Share an update, answer, or next step."
-                            required
-                          />
+                          <Textarea name="body" placeholder="Share an update, answer, or next step." required />
                         </FormField>
                         <SubmitButton pendingLabel="Sending...">Send reply</SubmitButton>
                       </form>
@@ -115,6 +108,7 @@ export default async function SupportPage({
               )}
             </CardContent>
           </Card>
+
           <Card>
             <CardHeader>
               <div>

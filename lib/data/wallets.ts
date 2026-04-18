@@ -1393,7 +1393,15 @@ export async function getAdminSupportData() {
         orderBy: {
           createdAt: "desc"
         },
-        take: 2
+        take: 3,
+        include: {
+          author: {
+            select: {
+              name: true,
+              email: true
+            }
+          }
+        }
       }
     },
     orderBy: [
@@ -1414,7 +1422,14 @@ export async function getAdminSupportData() {
         request.providerConnection?.displayLabel ?? request.providerConnection?.providerName ?? null,
       createdAt: request.createdAt.toISOString(),
       requester: request.requester?.name ?? request.requester?.email ?? "RAEYL user",
-      messages: request.messages.length
+      messages: request.messages.length,
+      recentMessages: request.messages.map((message) => ({
+        id: message.id,
+        body: message.body,
+        author: message.author?.name ?? message.author?.email ?? "RAEYL user",
+        createdAt: message.createdAt.toISOString(),
+        isInternal: message.isInternal
+      }))
     }));
   }
 

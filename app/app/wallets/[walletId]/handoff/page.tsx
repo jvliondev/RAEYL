@@ -76,6 +76,29 @@ export default async function HandoffPage({
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="space-y-6">
           <Card>
+            <CardHeader>
+              <CardTitle>Owner handoff preview</CardTitle>
+              <CardDescription>
+                This is the standard you are aiming for before the owner opens the wallet for the first time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-3">
+              <div className="rounded-md border border-white/10 p-4 text-sm text-muted">
+                <div className="font-medium text-foreground">A clear main action</div>
+                <p className="mt-2">The owner should know where to edit the website without reading documentation.</p>
+              </div>
+              <div className="rounded-md border border-white/10 p-4 text-sm text-muted">
+                <div className="font-medium text-foreground">A clean systems view</div>
+                <p className="mt-2">Every connected tool should explain what it does and whether it still needs review.</p>
+              </div>
+              <div className="rounded-md border border-white/10 p-4 text-sm text-muted">
+                <div className="font-medium text-foreground">Calm ownership confidence</div>
+                <p className="mt-2">Costs, access, and support should all feel obvious on day one.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader className="space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div>

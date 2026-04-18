@@ -20,6 +20,7 @@ import { getHandoffReadiness } from "@/lib/services/handoff-state";
 import { storeProviderSecret } from "@/lib/services/provider-credentials";
 import { verifyProviderConnection } from "@/lib/services/provider-connection-service";
 import { checkProviderHealth, checkWalletProviderHealth } from "@/lib/services/provider-health-service";
+import { runWalletAutomationSweep } from "@/lib/services/automation-service";
 import {
   accountSettingsSchema,
   billingRecordDeleteSchema,
@@ -136,6 +137,16 @@ export async function refreshWalletHealth(formData: FormData) {
 
   await requireWalletCapability(walletId, session.user.id, "provider.read");
   await checkWalletProviderHealth(walletId, session.user.id);
+
+  redirect(`/app/wallets/${walletId}/providers?health=checked`);
+}
+
+export async function runWalletAutomation(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "provider.read");
+  await runWalletAutomationSweep(walletId, session.user.id);
 
   redirect(`/app/wallets/${walletId}/providers?health=checked`);
 }

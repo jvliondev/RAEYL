@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { refreshWalletHealth } from "@/lib/actions/wallets";
+import { runWalletAutomation } from "@/lib/actions/wallets";
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/app/empty-state";
 import { ProviderCard } from "@/components/app/provider-card";
@@ -83,9 +83,9 @@ export default async function ProvidersPage({
           </div>
           {canManageProviders ? (
             <div className="flex flex-wrap gap-3">
-              <form action={refreshWalletHealth}>
+              <form action={runWalletAutomation}>
                 <input type="hidden" name="walletId" value={walletContext.id} />
-                <Button type="submit" variant="secondary">Run health checks</Button>
+                <Button type="submit" variant="secondary">Refresh provider intelligence</Button>
               </form>
               <Link href={`/app/wallets/${walletContext.id}/providers/new`}>
                 <Button>Connect a tool</Button>

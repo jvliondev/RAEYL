@@ -7,6 +7,7 @@ import { requireAdmin, requireSession } from "@/lib/auth/access";
 import { prisma } from "@/lib/prisma";
 import { addSupportMessage } from "@/lib/services/support-service";
 import { recordAuditEvent } from "@/lib/audit";
+import { createInAppNotification } from "@/lib/services/notification-service";
 
 export async function updateSupportRequestStatus(formData: FormData) {
   const session = await requireSession();
@@ -34,6 +35,17 @@ export async function updateSupportRequestStatus(formData: FormData) {
     action: "support.status.updated",
     summary: `Support request status changed to ${status.toLowerCase()}.`
   });
+
+  if (supportRequest.requesterId) {
+    await createInAppNotification({
+      userId: supportRequest.requesterId,
+      walletId: supportRequest.walletId,
+      type: "SUPPORT",
+      subject: "Support status updated",
+      body: `Your support request is now ${status.toLowerCase().replace(/_/g, " ")}.`,
+      ctaUrl: `/app/wallets/${supportRequest.walletId}/support`
+    });
+  }
 
   redirect("/admin/support?updated=1");
 }
@@ -65,4 +77,26 @@ export async function addSupportReply(formData: FormData) {
   }
 
   redirect(`/app/wallets/${supportRequest.walletId}/support?updated=reply`);
+}
+
+export async function addAdminSupportReply(formData: FormData) {
+  const session = await requireSession();
+  await requireAdmin(session.user.id);
+
+  const supportRequestId = String(formData.get("supportRequestId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  const isInternal = String(formData.get("isInternal") ?? "false") === "true";
+
+  if (!body) {
+    throw new Error("Reply cannot be empty.");
+  }
+
+  await addSupportMessage({
+    supportRequestId,
+    authorId: session.user.id,
+    body,
+    isInternal
+  });
+
+  redirect("/admin/support?updated=reply");
 }

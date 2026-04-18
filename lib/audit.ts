@@ -1,5 +1,6 @@
 import { auditLogSchema } from "@/lib/validation/backend";
 import { log } from "@/lib/logging";
+import { prisma } from "@/lib/prisma";
 
 export type AuditInput = Parameters<typeof auditLogSchema.parse>[0];
 
@@ -22,5 +23,19 @@ export async function recordAuditEvent(input: AuditInput) {
     }
   });
 
-  return parsed;
+  return prisma.auditLog.create({
+    data: {
+      actorUserId: parsed.actorUserId,
+      actorType: parsed.actorType,
+      walletId: parsed.walletId,
+      entityType: parsed.entityType,
+      entityId: parsed.entityId,
+      action: parsed.action,
+      summary: parsed.summary,
+      metadata: parsed.metadata,
+      ipAddress: parsed.ipAddress,
+      userAgent: parsed.userAgent,
+      requestId: parsed.requestId
+    }
+  });
 }
