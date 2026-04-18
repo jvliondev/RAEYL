@@ -18,65 +18,48 @@ function RaeylFloatMark({ className }: { className?: string }) {
       aria-hidden="true"
     >
       <defs>
-        {/* Purple/violet main face */}
-        <linearGradient id="fc-purple" x1="15" y1="10" x2="115" y2="165" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stopColor="#c084fc" />
-          <stop offset="40%"  stopColor="#8b5cf6" />
-          <stop offset="100%" stopColor="#5b21b6" />
+        <linearGradient id="fc-chrome" x1="14" y1="10" x2="118" y2="162" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stopColor="#f4f4f4" />
+          <stop offset="10%"  stopColor="#d8d8d8" />
+          <stop offset="28%"  stopColor="#909090" />
+          <stop offset="46%"  stopColor="#2e2e2e" />
+          <stop offset="62%"  stopColor="#4a4a4a" />
+          <stop offset="78%"  stopColor="#8c8c8c" />
+          <stop offset="100%" stopColor="#b0b0b0" />
         </linearGradient>
-        {/* Cyan inner ribbon */}
-        <linearGradient id="fc-cyan" x1="15" y1="165" x2="90" y2="10" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stopColor="#06b6d4" />
-          <stop offset="100%" stopColor="#67e8f9" />
+        <linearGradient id="fc-ribbon" x1="52" y1="12" x2="34" y2="158" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stopColor="#ffffff" />
+          <stop offset="20%"  stopColor="#e4e4e4" />
+          <stop offset="50%"  stopColor="#b0b0b0" />
+          <stop offset="100%" stopColor="#808080" />
         </linearGradient>
-        {/* Dark navy counter */}
-        <linearGradient id="fc-navy" x1="95" y1="25" x2="38" y2="90" gradientUnits="userSpaceOnUse">
-          <stop offset="0%"   stopColor="#0f0e2a" />
-          <stop offset="100%" stopColor="#1e1b4b" />
-        </linearGradient>
+        <radialGradient id="fc-counter" cx="65%" cy="45%" r="55%" gradientUnits="objectBoundingBox">
+          <stop offset="0%"   stopColor="#1a1a1a" />
+          <stop offset="100%" stopColor="#080808" />
+        </radialGradient>
+        <filter id="fc-shadow" x="-15%" y="-10%" width="140%" height="140%">
+          <feDropShadow dx="2" dy="4" stdDeviation="4" floodColor="#000" floodOpacity="0.7" />
+        </filter>
       </defs>
 
-      {/* Layer 1: Navy depth shadow */}
       <path
-        d="M 18 158 L 18 14 L 68 14
-           C 102 14 120 35 116 63
-           C 113 86  97 101 75 105
-           L 116 158 L 89 158
-           L 53 107  L 40 107
-           L 40 158 Z"
-        fill="#1e1b4b"
-        transform="translate(5 6)"
-        opacity="0.85"
+        d="M 18 158 L 18 14 L 68 14 C 102 14 120 35 116 63 C 113 86 97 101 75 105 L 116 158 L 89 158 L 53 107 L 40 107 L 40 158 Z"
+        fill="#000000" opacity="0.6" transform="translate(3 5)"
       />
-
-      {/* Layer 2: Purple main body */}
-      <path
-        d="M 18 158 L 18 14 L 68 14
-           C 102 14 120 35 116 63
-           C 113 86  97 101 75 105
-           L 116 158 L 89 158
-           L 53 107  L 40 107
-           L 40 158 Z"
-        fill="url(#fc-purple)"
-      />
-
-      {/* Inner counter (bowl of R) */}
-      <path
-        d="M 40 32 L 40 89
-           C 60 94  90 88  95 63
-           C 100 37  68 30  40 32 Z"
-        fill="url(#fc-navy)"
-      />
-
-      {/* Layer 3: Cyan inner ribbon strip */}
-      <path
-        d="M 14 14 C 18 8 26 8 34 11
-           L 34 108 L 72 158 L 90 158
-           L 52 108 L 52 13
-           C 42 10 16 10 14 14 Z"
-        fill="url(#fc-cyan)"
-        opacity="0.9"
-      />
+      <g filter="url(#fc-shadow)">
+        <path
+          d="M 18 158 L 18 14 L 68 14 C 102 14 120 35 116 63 C 113 86 97 101 75 105 L 116 158 L 89 158 L 53 107 L 40 107 L 40 158 Z"
+          fill="url(#fc-chrome)"
+        />
+        <path
+          d="M 40 32 L 40 89 C 60 94 90 88 95 63 C 100 37 68 30 40 32 Z"
+          fill="url(#fc-counter)"
+        />
+        <path
+          d="M 14 14 C 18 8 26 8 34 11 L 34 108 L 72 158 L 90 158 L 52 108 L 52 13 C 42 10 16 10 14 14 Z"
+          fill="url(#fc-ribbon)" opacity="0.92"
+        />
+      </g>
     </svg>
   );
 }
