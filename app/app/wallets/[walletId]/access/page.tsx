@@ -30,12 +30,12 @@ export default async function AccessPage({
       walletContext={walletContext}
     >
       {invite === "sent" ? (
-        <div className="mb-4 rounded-md border border-success/30 bg-success/5 p-4 text-sm text-success">
+        <div className="mb-4 rounded-xl border border-success/25 bg-success/[0.06] px-5 py-4 text-sm text-success">
           Invite sent. They will receive a notification once they log in.
         </div>
       ) : null}
       {transferred === "1" ? (
-        <div className="mb-4 rounded-md border border-success/30 bg-success/5 p-4 text-sm text-success">
+        <div className="mb-4 rounded-xl border border-success/25 bg-success/[0.06] px-5 py-4 text-sm text-success">
           Ownership transferred successfully.
         </div>
       ) : null}

@@ -230,7 +230,7 @@ export default async function NewProviderPage({
                     placeholder="Paste secure credential or shared access code"
                   />
                 </FormField>
-                <div className="md:col-span-2 rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm text-muted">
+                <div className="md:col-span-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-muted">
                   <div className="font-medium text-foreground">Connection behavior</div>
                   <ul className="mt-2 space-y-1">
                     <li>Manual record: saves links and notes only.</li>
@@ -240,7 +240,7 @@ export default async function NewProviderPage({
                   </ul>
                 </div>
                 {providerProfile ? (
-                  <div className="md:col-span-2 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm text-muted">
+                  <div className="md:col-span-2 rounded-xl border border-primary/20 bg-primary/[0.05] p-4 text-sm text-muted">
                     <div className="font-medium text-foreground">Best connection for this tool</div>
                     <p className="mt-2">
                       {providerProfile.bestConnectionMethod === "API_TOKEN"

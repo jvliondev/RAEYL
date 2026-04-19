@@ -103,7 +103,7 @@ export default async function BillingPage({
           </Card>
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <Card>
             <CardHeader>
               <div>
@@ -184,7 +184,7 @@ export default async function BillingPage({
                   ) : null}
                 </div>
                 {!billingConfig.stripeReady ? (
-                  <div className="rounded-md border border-warning/20 bg-warning/10 p-4 text-sm text-warning">
+                  <div className="rounded-xl border border-warning/20 bg-warning/[0.06] px-5 py-4 text-sm text-warning">
                     Stripe setup still needs configuration before live checkout can run.
                   </div>
                 ) : null}
@@ -243,7 +243,7 @@ export default async function BillingPage({
           </div>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
           <Card>
             <CardHeader>
               <div>

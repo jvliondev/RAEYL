@@ -150,7 +150,7 @@ export default async function WalletSetupPage({
       description="Move through the setup steps in the same order a polished handoff naturally happens."
       walletContext={walletContext}
     >
-      <div className="mb-6 rounded-md border border-white/10 bg-white/[0.03] p-5">
+      <div className="mb-6 rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-sm font-medium text-foreground">Setup progress</div>

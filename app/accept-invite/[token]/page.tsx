@@ -28,7 +28,7 @@ export default async function AcceptInvitePage({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="rounded-md border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-5">
             {preview.invite?.wallet ? (
               <>
                 <div className="text-sm text-muted">Business</div>

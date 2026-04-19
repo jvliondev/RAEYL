@@ -78,7 +78,7 @@ export default async function TransferOwnershipPage({
                       ))}
                     </Select>
                   </FormField>
-                  <div className="rounded-md border border-warning/30 bg-warning/5 p-4 text-sm text-warning">
+                  <div className="rounded-xl border border-warning/20 bg-warning/[0.06] px-5 py-4 text-sm text-warning">
                     This will immediately update wallet ownership. The new owner will receive
                     an in-app notification.
                   </div>

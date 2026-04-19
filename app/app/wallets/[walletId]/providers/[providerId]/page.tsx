@@ -58,12 +58,12 @@ export default async function ProviderDetailPage({
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="space-y-6">
           {health === "checked" ? (
-            <div className="rounded-md border border-success/30 bg-success/5 p-4 text-sm text-success">
+            <div className="rounded-xl border border-success/25 bg-success/[0.06] px-5 py-4 text-sm text-success">
               Live health check completed. RAEYL refreshed this tool with the latest data it could verify.
             </div>
           ) : null}
           {needsProjectSelection ? (
-            <div className="rounded-md border border-warning/30 bg-warning/5 p-4 text-sm text-warning">
+            <div className="rounded-xl border border-warning/20 bg-warning/[0.06] px-5 py-4 text-sm text-warning">
               This Vercel account is verified, but the wallet is not locked to one project yet. Reconnect it with the
               right project so health checks and links stay precise.
             </div>

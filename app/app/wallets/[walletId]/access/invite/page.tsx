@@ -54,7 +54,7 @@ export default async function InviteTeammatePage({
                   <option value="VIEWER">Viewer — read-only access</option>
                 </Select>
               </FormField>
-              <div className="rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm text-muted space-y-1">
+              <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-muted space-y-1">
                 <p><span className="text-foreground font-medium">Developer</span> — connect tools, manage providers, do handoffs</p>
                 <p><span className="text-foreground font-medium">Editor</span> — view everything, submit support requests</p>
                 <p><span className="text-foreground font-medium">Billing manager</span> — view and edit billing records</p>

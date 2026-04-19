@@ -12,7 +12,7 @@ export function MagicLinkForm() {
 
   if (result?.sent) {
     return (
-      <div className="rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm text-muted text-center">
+      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-muted text-center">
         Check your email — a sign-in link is on its way to{" "}
         <span className="text-foreground">{result.email}</span>.
       </div>

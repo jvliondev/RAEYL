@@ -30,7 +30,7 @@ export default async function SignInPage({
         </CardHeader>
         <CardContent>
           {justRegistered ? (
-            <div className="mb-4 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-muted">
+            <div className="mb-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm text-muted">
               Account created. Sign in to continue.
             </div>
           ) : null}
@@ -54,7 +54,7 @@ export default async function SignInPage({
               {isMagicLinkConfigured ? <MagicLinkForm /> : null}
             </div>
           ) : (
-            <div className="mt-4 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm text-muted">
+            <div className="mt-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 text-sm text-muted">
               Password sign-in is ready. Google sign-in and email links appear here when they are configured.
             </div>
           )}

@@ -107,7 +107,7 @@ export default async function WalletDashboardPage({
             </div>
           ) : null}
 
-          <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Confidence"
               value={intelligence.confidenceLabel}
@@ -325,7 +325,7 @@ export default async function WalletDashboardPage({
       description="See what powers the site, what still needs setup, and the clearest next move for handoff."
       walletContext={walletContext}
     >
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Readiness score"
@@ -356,7 +356,7 @@ export default async function WalletDashboardPage({
           />
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <Card>
             <CardHeader>
               <div>
@@ -524,7 +524,7 @@ export default async function WalletDashboardPage({
           </div>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card>
             <CardHeader>
               <div>

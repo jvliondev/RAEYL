@@ -36,7 +36,7 @@ export function NewWalletForm() {
                 ))}
               </Select>
             </FormField>
-            <div className="md:col-span-2 rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm text-muted">
+            <div className="md:col-span-2 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-muted">
               <div className="font-medium text-foreground">{defaultTemplate.label}</div>
               <p className="mt-1">{defaultTemplate.description}</p>
               <p className="mt-3">{defaultTemplate.developerSummary}</p>
@@ -110,7 +110,7 @@ export function NewWalletForm() {
           <FormField label="Internal notes">
             <Textarea name="notes" placeholder="Agency notes, support expectations, or billing guidance." />
           </FormField>
-          <div className="rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm text-muted">
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 text-sm text-muted">
             <div className="font-medium text-foreground">What happens next</div>
             <ul className="mt-2 space-y-1">
               <li>RAEYL will recommend the most useful tools for this website type.</li>
