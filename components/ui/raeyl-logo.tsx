@@ -1,98 +1,122 @@
+import { useId } from "react";
+
 import { cn } from "@/lib/utils";
 
 export function RaeylMark({ className }: { className?: string }) {
+  const id = useId().replace(/:/g, "");
+  const glowId = `raeyl-glow-${id}`;
+  const railBodyId = `raeyl-rail-body-${id}`;
+  const railChromeId = `raeyl-rail-chrome-${id}`;
+  const railEdgeId = `raeyl-rail-edge-${id}`;
+  const shadowId = `raeyl-shadow-${id}`;
+
   return (
     <svg
-      viewBox="0 0 118 112"
+      viewBox="0 0 152 130"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn("h-8 w-auto", className)}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="raeyl-rail-base" x1="22" y1="18" x2="91" y2="82" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#f5f7fb" />
-          <stop offset="0.16" stopColor="#aab0bc" />
-          <stop offset="0.34" stopColor="#3f4653" />
-          <stop offset="0.56" stopColor="#f8fafc" />
-          <stop offset="0.76" stopColor="#434a57" />
-          <stop offset="1" stopColor="#d7dde7" />
+        <radialGradient id={glowId} cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(82 48) rotate(90) scale(58 66)">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.34" />
+          <stop offset="0.45" stopColor="#E8EDF4" stopOpacity="0.18" />
+          <stop offset="1" stopColor="#E8EDF4" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={railBodyId} x1="45" y1="18" x2="110" y2="102" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#F6F9FD" />
+          <stop offset="0.16" stopColor="#9098A6" />
+          <stop offset="0.32" stopColor="#161B25" />
+          <stop offset="0.52" stopColor="#F3F6FB" />
+          <stop offset="0.7" stopColor="#2A3140" />
+          <stop offset="0.86" stopColor="#DCE3EC" />
+          <stop offset="1" stopColor="#6D7686" />
         </linearGradient>
-        <linearGradient id="raeyl-rail-shadow" x1="28" y1="24" x2="96" y2="84" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#0b0f17" />
-          <stop offset="0.45" stopColor="#2a3140" />
-          <stop offset="1" stopColor="#06080d" />
+        <linearGradient id={railChromeId} x1="64" y1="18" x2="77" y2="98" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="0.18" stopColor="#FBFDFF" />
+          <stop offset="0.42" stopColor="#C7CFDB" />
+          <stop offset="0.62" stopColor="#FFFFFF" />
+          <stop offset="0.82" stopColor="#8B94A2" />
+          <stop offset="1" stopColor="#F8FBFF" />
         </linearGradient>
-        <linearGradient id="raeyl-rail-highlight" x1="44" y1="23" x2="68" y2="76" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
-          <stop offset="0.45" stopColor="#f5f7fb" stopOpacity="0.9" />
-          <stop offset="1" stopColor="#c1c9d6" stopOpacity="0.25" />
+        <linearGradient id={railEdgeId} x1="55" y1="22" x2="119" y2="96" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#0A0E15" />
+          <stop offset="0.2" stopColor="#212735" />
+          <stop offset="0.5" stopColor="#04060A" />
+          <stop offset="0.78" stopColor="#30394A" />
+          <stop offset="1" stopColor="#090C13" />
         </linearGradient>
-        <filter id="raeyl-rail-glow" x="0" y="0" width="118" height="112" filterUnits="userSpaceOnUse">
-          <feGaussianBlur stdDeviation="5" result="blur" />
-          <feColorMatrix
-            in="blur"
-            type="matrix"
-            values="1 0 0 0 0
-                    0 1 0 0 0
-                    0 0 1 0 0
-                    0 0 0 .18 0"
-          />
+        <filter id={shadowId} x="12" y="11" width="126" height="112" filterUnits="userSpaceOnUse">
+          <feDropShadow dx="0" dy="9" stdDeviation="7" floodColor="#02040A" floodOpacity="0.6" />
         </filter>
       </defs>
 
-      <g filter="url(#raeyl-rail-glow)">
+      <ellipse cx="80" cy="50" rx="66" ry="44" fill={`url(#${glowId})`} />
+
+      <g filter={`url(#${shadowId})`}>
         <path
-          d="M31 21H66C85 21 95 34 91 48C88 58 79 63 69 66L48 73C39 76 33 82 30 91H21C24 77 31 67 43 61L65 52C72 49 77 45 79 39C82 30 76 24 62 24H31V21Z"
-          fill="#dfe5ef"
+          d="M39 24H85C107 24 120 33 120 49C120 60 113 68 97 76L77 86C65 92 56 100 47 111H64C71 103 78 97 89 92L108 83C126 74 134 63 134 48C134 27 117 15 88 15H39V24Z"
+          fill={`url(#${railEdgeId})`}
+        />
+        <path
+          d="M35 18H84C107 18 121 28 121 44C121 55 114 63 100 71L79 82C66 88 54 98 43 112C56 110 67 105 77 98L98 84C120 72 132 58 132 41C132 20 114 10 85 10H35V18Z"
+          fill={`url(#${railBodyId})`}
+        />
+        <path
+          d="M50 20H83C102 20 113 28 113 41C113 50 107 57 94 64L72 76C58 84 47 93 38 106"
+          stroke={`url(#${railChromeId})`}
+          strokeWidth="4.5"
+          strokeLinecap="round"
+        />
+        <path
+          d="M117 28C124 34 127 42 126 50C125 60 119 68 106 76L87 88C75 95 65 102 55 111"
+          stroke={`url(#${railChromeId})`}
+          strokeWidth="4"
+          strokeLinecap="round"
+          opacity="0.96"
+        />
+        <path
+          d="M109 29C116 35 118 42 117 49C115 57 110 64 99 71L79 83C66 90 55 99 45 108"
+          stroke={`url(#${railEdgeId})`}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          opacity="0.92"
+        />
+        <path
+          d="M102 31C108 36 110 42 109 48C108 55 104 61 94 68L74 80C61 88 50 97 41 105"
+          stroke={`url(#${railChromeId})`}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          opacity="0.86"
         />
       </g>
-
-      <path
-        d="M29 18H67C88 18 99 31 95 47C92 58 83 65 71 68L50 75C41 78 35 84 31 93H21C24 79 32 69 44 63L66 54C74 51 80 47 83 40C87 29 79 21 63 21H29V18Z"
-        fill="url(#raeyl-rail-shadow)"
-      />
-      <path
-        d="M26 15H65C86 15 99 27 98 44C97 56 90 66 76 73L58 82C50 86 44 92 39 97L29 93C33 85 41 76 50 71L69 61C81 54 87 47 88 39C90 28 82 18 64 18H26V15Z"
-        fill="url(#raeyl-rail-base)"
-      />
-      <path
-        d="M59 18H65C84 18 93 29 90 41C88 50 82 57 68 64L50 73C42 77 36 83 32 90"
-        stroke="url(#raeyl-rail-highlight)"
-        strokeWidth="4.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M83 24C95 30 99 42 94 54C91 62 85 69 75 75L56 86C47 91 40 96 34 101"
-        stroke="url(#raeyl-rail-base)"
-        strokeWidth="3.6"
-        strokeLinecap="round"
-        opacity="0.95"
-      />
-      <path
-        d="M77 26C87 32 90 41 86 51C83 58 77 64 67 70L47 81C40 85 34 91 29 97"
-        stroke="url(#raeyl-rail-shadow)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        opacity="0.9"
-      />
     </svg>
   );
 }
 
 export function RaeylLogo({
   className,
-  markClassName
+  markClassName,
+  wordmarkClassName
 }: {
   className?: string;
   markClassName?: string;
+  wordmarkClassName?: string;
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <RaeylMark className={cn("h-8 w-auto flex-shrink-0", markClassName)} />
       <span
-        className="bg-[linear-gradient(180deg,#f8fafc_0%,#d2d8e2_28%,#7f8797_60%,#f8fafc_100%)] bg-clip-text text-[12px] font-semibold tracking-[0.36em] text-transparent drop-shadow-[0_1px_8px_rgba(255,255,255,0.16)]"
-        style={{ fontFamily: "var(--font-display), var(--font-inter), system-ui" }}
+        className={cn(
+          "bg-[linear-gradient(180deg,#f8fbff_0%,#d9e0e9_24%,#818a98_62%,#f5f8fd_100%)] bg-clip-text text-[12px] font-semibold text-transparent drop-shadow-[0_1px_10px_rgba(255,255,255,0.14)]",
+          wordmarkClassName
+        )}
+        style={{
+          fontFamily: "var(--font-display), var(--font-inter), system-ui",
+          letterSpacing: "0.34em"
+        }}
       >
         RAEYL
       </span>
