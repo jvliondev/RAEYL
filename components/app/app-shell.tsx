@@ -130,7 +130,7 @@ export async function AppShell({
       )
     : [];
 
-  const walletTrail = wallet.id ? "Wallet" : "Platform";
+  const walletTrail = wallet.id ? "Wallet" : "Workspace";
   const roleLabel = wallet.role
     ? wallet.role.replace(/_/g, " ")
     : null;
@@ -181,9 +181,9 @@ export async function AppShell({
                 className="mb-5 rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.04] to-transparent p-3.5"
                 style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)" }}
               >
-                <div className="app-eyebrow mb-1.5">Platform</div>
-                <div className="text-[14px] font-semibold text-white/90">RAEYL admin</div>
-                <div className="mt-1 text-[11px] text-white/35">Operational visibility</div>
+                <div className="app-eyebrow mb-1.5">Workspace</div>
+                <div className="text-[14px] font-semibold text-white/90">RAEYL workspace</div>
+                <div className="mt-1 text-[11px] text-white/35">Client wallets and setup rails</div>
               </div>
             )}
 
@@ -211,7 +211,7 @@ export async function AppShell({
               </NavLink>
               <NavLink href="/app/wallets" exact>
                 <PanelLeft className="h-[15px] w-[15px] flex-shrink-0 opacity-80" strokeWidth={1.6} />
-                All wallets
+                Workspace
               </NavLink>
               {viewer?.type === "ADMIN" ? (
                 <NavLink href="/admin">
@@ -317,7 +317,7 @@ export async function AppShell({
                   href={wallet.id ? `/app/wallets/${wallet.id}` : "/app/wallets"}
                   className="flex h-8 items-center rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 text-[12px] font-medium text-white/50 transition-all hover:border-white/[0.14] hover:bg-white/[0.06] hover:text-white/80"
                 >
-                  {wallet.id ? "Wallet home" : "Wallets"}
+                  {wallet.id ? "Wallet home" : "Workspace"}
                 </Link>
                 <div className="flex h-8 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3">
                   <Link

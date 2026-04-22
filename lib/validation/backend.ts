@@ -33,6 +33,19 @@ export const providerConnectionMethodSchema = z.enum([
   "SECURE_LINK"
 ]);
 
+export const providerConnectionStateSchema = z.enum([
+  "INITIATED",
+  "AWAITING_AUTH",
+  "VERIFYING",
+  "DISCOVERING",
+  "AWAITING_SELECTION",
+  "CONNECTED",
+  "DEGRADED",
+  "RECONNECT_REQUIRED",
+  "DISCONNECTED",
+  "FAILED"
+]);
+
 export const healthStatusSchema = z.enum([
   "HEALTHY",
   "ATTENTION_NEEDED",
@@ -173,6 +186,7 @@ export const providerConnectionSchema = z.object({
   walletId: cuidSchema,
   websiteId: cuidSchema.optional(),
   providerTemplateId: cuidSchema.optional(),
+  adapterKey: z.string().trim().max(80).optional(),
   providerName: z.string().trim().min(2).max(120),
   displayLabel: z.string().trim().max(120).optional(),
   category: providerCategorySchema,

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 
-import { InviteStatus } from "@prisma/client";
+import { InviteStatus } from "@prisma/client/index";
 
 import { prisma } from "@/lib/prisma";
 

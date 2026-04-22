@@ -2,7 +2,8 @@
 
 import crypto from "crypto";
 import { redirect } from "next/navigation";
-import { Prisma, WalletRole } from "@prisma/client";
+import { headers } from "next/headers";
+import { Prisma, WalletRole } from "@prisma/client/index";
 
 import {
   requireProviderInWallet,
@@ -15,11 +16,14 @@ import { prisma } from "@/lib/prisma";
 import { recordAuditEvent } from "@/lib/audit";
 import { createInAppNotification } from "@/lib/services/notification-service";
 import { createBillingPortalSession, createCheckoutSession } from "@/lib/services/billing-service";
+import { syncProviderConnectionSignals } from "@/lib/services/provider-signal-service";
 import { createSupportRequest } from "@/lib/services/support-service";
 import { getHandoffReadiness } from "@/lib/services/handoff-state";
-import { storeProviderSecret } from "@/lib/services/provider-credentials";
-import { verifyProviderConnection } from "@/lib/services/provider-connection-service";
 import { checkProviderHealth, checkWalletProviderHealth } from "@/lib/services/provider-health-service";
+import { createConnectedProviderRecord } from "@/lib/providers/orchestrator";
+import { buildProviderOAuthAuthorizationUrl, getConfiguredAppOrigin } from "@/lib/providers/oauth";
+import { getProviderAdapter } from "@/lib/providers/registry";
+import { buildSetupTargetHref, getNextSetupConnectionTarget } from "@/lib/services/setup-rail";
 import { runWalletAutomationSweep } from "@/lib/services/automation-service";
 import {
   accountSettingsSchema,
@@ -35,6 +39,11 @@ import {
   walletSettingsUpdateSchema,
   websiteCreateSchema
 } from "@/lib/validation/backend";
+import {
+  getEmptySetupProfile,
+  parseStoredSetupProfile,
+  setupProfileSchema
+} from "@/lib/services/setup-orchestrator";
 
 function toSlug(value: string): string {
   return value
@@ -43,6 +52,57 @@ function toSlug(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80) || "wallet";
+}
+
+function derivePrimaryDomain(url?: string) {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function sanitizeReturnPath(walletId: string, value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (!raw.startsWith("/")) {
+    return null;
+  }
+
+  if (!raw.startsWith(`/app/wallets/${walletId}`) && !raw.startsWith("/app/onboarding")) {
+    return null;
+  }
+
+  return raw;
+}
+
+async function getRequestOrigin() {
+  const configured = getConfiguredAppOrigin();
+  if (configured) {
+    return configured;
+  }
+
+  const headerStore = await headers();
+  const forwardedHost = headerStore.get("x-forwarded-host");
+  const host = forwardedHost ?? headerStore.get("host");
+  const protocol = headerStore.get("x-forwarded-proto") ?? "http";
+
+  if (host) {
+    return `${protocol}://${host}`;
+  }
+
+  return "http://localhost:3000";
+}
+
+function isJsonObject(value: Prisma.JsonValue): value is Prisma.JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function createWallet(
@@ -109,12 +169,64 @@ export async function createWallet(
     }
   });
 
+  const initialWebsiteName =
+    String(formData.get("websiteName") ?? "").trim() ||
+    result.data.websiteName ||
+    result.data.businessName;
+  const initialWebsiteUrl = result.data.websiteUrl;
+  const initialWebsiteDescription = result.data.websiteDescription;
+
+  if (initialWebsiteName || initialWebsiteUrl) {
+    await prisma.website.create({
+      data: {
+        walletId: wallet.id,
+        name: initialWebsiteName || result.data.businessName,
+        primaryDomain: derivePrimaryDomain(initialWebsiteUrl),
+        productionUrl: initialWebsiteUrl,
+        ownerNotes: initialWebsiteDescription,
+        status: "DRAFT"
+      }
+    });
+
+    await prisma.wallet.update({
+      where: { id: wallet.id },
+      data: {
+        setupStatus: "WEBSITES_ADDED"
+      }
+    });
+  }
+
   await prisma.setting.create({
     data: {
       scope: "WALLET",
       walletId: wallet.id,
       key: "walletTemplate",
       value: walletTemplate
+    }
+  });
+
+  const setupProfileResult = setupProfileSchema.safeParse({
+    setupIntent: formData.get("setupIntent") || undefined,
+    updateCadence: formData.get("updateCadence") || undefined,
+    domainProviderSlug: formData.get("domainProviderSlug") || undefined,
+    hostingProviderSlug: formData.get("hostingProviderSlug") || undefined,
+    cmsProviderSlug: formData.get("cmsProviderSlug") || undefined,
+    databaseProviderSlug: formData.get("databaseProviderSlug") || undefined,
+    paymentsProviderSlug: formData.get("paymentsProviderSlug") || undefined,
+    analyticsProviderSlug: formData.get("analyticsProviderSlug") || undefined,
+    authProviderSlug: formData.get("authProviderSlug") || undefined,
+    schedulingProviderSlug: formData.get("schedulingProviderSlug") || undefined,
+    supportProviderSlug: formData.get("supportProviderSlug") || undefined,
+    emailProviderSlug: formData.get("emailProviderSlug") || undefined,
+    notes: formData.get("setupNotes") || undefined
+  });
+
+  await prisma.setting.create({
+    data: {
+      scope: "WALLET",
+      walletId: wallet.id,
+      key: "setupProfile",
+      value: setupProfileResult.success ? setupProfileResult.data : getEmptySetupProfile()
     }
   });
 
@@ -284,6 +396,9 @@ export async function createProviderConnection(formData: FormData) {
   const secureCredential =
     parsed.connectionMethod === "SECURE_LINK" ? String(formData.get("secureCredential") ?? "").trim() : "";
   const providerTemplateSlug = String(formData.get("providerTemplateSlug") ?? "").trim() || undefined;
+  const existingProviderId = String(formData.get("providerId") ?? "").trim() || undefined;
+  const returnTo = sanitizeReturnPath(parsed.walletId, formData.get("returnTo"));
+  const setupChain = String(formData.get("setupChain") ?? "") === "1";
 
   await requireWalletCapability(parsed.walletId, session.user.id, "provider.write");
 
@@ -291,7 +406,11 @@ export async function createProviderConnection(formData: FormData) {
     await requireWebsiteInWallet(parsed.walletId, parsed.websiteId);
   }
 
-  const newProviderUrl = `/app/wallets/${walletId}/providers/new?template=${encodeURIComponent(providerTemplateSlug ?? "custom")}${parsed.websiteId ? `&websiteId=${encodeURIComponent(parsed.websiteId)}` : ""}`;
+  if (existingProviderId) {
+    await requireProviderInWallet(parsed.walletId, existingProviderId);
+  }
+
+  const newProviderUrl = `/app/wallets/${walletId}/providers/new?template=${encodeURIComponent(providerTemplateSlug ?? "custom")}${existingProviderId ? `&providerId=${encodeURIComponent(existingProviderId)}` : ""}${parsed.websiteId ? `&websiteId=${encodeURIComponent(parsed.websiteId)}` : ""}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}${setupChain ? "&setupChain=1" : ""}`;
 
   if (parsed.connectionMethod === "API_TOKEN" && !apiToken) {
     redirect(`${newProviderUrl}&formError=${encodeURIComponent("Add an API token so RAEYL can verify and connect this tool.")}`);
@@ -301,70 +420,33 @@ export async function createProviderConnection(formData: FormData) {
     redirect(`${newProviderUrl}&formError=${encodeURIComponent("Add the secure credential or access code for this connection.")}`);
   }
 
-  let verification;
+  if (parsed.connectionMethod === "OAUTH") {
+    redirect(
+      `${newProviderUrl}&formError=${encodeURIComponent(
+        "Use the OAuth connection button below so RAEYL can authorize and attach the correct account automatically."
+      )}`
+    );
+  }
+
+  let provider;
+  let orchestration;
   try {
-    verification = await verifyProviderConnection({
-      providerName: parsed.providerName,
-      connectionMethod: parsed.connectionMethod,
-      apiToken: apiToken || undefined,
-      externalProjectId: parsed.externalProjectId,
-      externalTeamId: parsed.externalTeamId
+    const created = await createConnectedProviderRecord({
+      actorUserId: session.user.id,
+      existingProviderId,
+      provider: {
+        ...parsed,
+        providerSlug: providerTemplateSlug,
+        apiToken: apiToken || undefined,
+        secureCredential: secureCredential || undefined
+      }
     });
+    provider = created.provider;
+    orchestration = created.orchestration;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not verify this provider connection.";
     redirect(`${newProviderUrl}&formError=${encodeURIComponent(message)}`);
   }
-
-  const provider = await prisma.$transaction(async (tx) => {
-    const createdProvider = await tx.providerConnection.create({
-      data: {
-        ...parsed,
-        connectedAccountLabel: verification?.connectedAccountLabel ?? parsed.connectedAccountLabel,
-        externalProjectId: verification?.externalProjectId ?? parsed.externalProjectId,
-        externalTeamId: verification?.externalTeamId ?? parsed.externalTeamId,
-        dashboardUrl: verification?.dashboardUrl ?? parsed.dashboardUrl,
-        billingUrl: verification?.billingUrl ?? parsed.billingUrl,
-        editUrl: verification?.editUrl ?? parsed.editUrl,
-        tokenMetadata: verification?.tokenMetadata ?? undefined,
-        metadata: {
-          ...(parsed.metadata ?? {}),
-          ...(verification?.metadata ?? {}),
-          ...(providerTemplateSlug ? { providerTemplateSlug } : {})
-        },
-        notes: [parsed.notes, verification?.notes].filter(Boolean).join("\n\n") || undefined,
-        monthlyCostEstimate:
-          parsed.monthlyCostEstimate !== undefined
-            ? new Prisma.Decimal(parsed.monthlyCostEstimate)
-            : undefined,
-        status: verification?.status ?? (parsed.connectionMethod === "MANUAL" ? "CONNECTED" : "PENDING_VERIFICATION"),
-        syncState: verification?.syncState ?? (parsed.connectionMethod === "MANUAL" ? "DISABLED" : "PENDING"),
-        healthStatus: verification?.healthStatus ?? (parsed.connectionMethod === "MANUAL" ? "UNKNOWN" : "ATTENTION_NEEDED"),
-        lastSyncAt: verification?.lastSyncAt,
-        lastHealthCheckAt: verification?.lastHealthCheckAt,
-        createdById: session.user.id
-      }
-    });
-
-    if (apiToken) {
-      await storeProviderSecret(tx, {
-        providerConnectionId: createdProvider.id,
-        secretType: "API_KEY",
-        rawValue: apiToken,
-        createdById: session.user.id
-      });
-    }
-
-    if (secureCredential) {
-      await storeProviderSecret(tx, {
-        providerConnectionId: createdProvider.id,
-        secretType: "SECURE_LINK_CREDENTIAL",
-        rawValue: secureCredential,
-        createdById: session.user.id
-      });
-    }
-
-    return createdProvider;
-  });
 
   await prisma.wallet.update({
     where: { id: parsed.walletId },
@@ -373,17 +455,139 @@ export async function createProviderConnection(formData: FormData) {
     }
   });
 
+  await syncProviderConnectionSignals(provider.id, session.user.id);
+
   await recordAuditEvent({
     actorUserId: session.user.id,
     actorType: "USER",
     walletId: parsed.walletId,
     entityType: "PROVIDER",
     entityId: provider.id,
-    action: "provider.created",
-    summary: `${provider.providerName} added as a connected provider.`
+    action: existingProviderId ? "provider.reconnected" : "provider.created",
+    summary: existingProviderId
+      ? `${provider.providerName} connection refreshed.`
+      : `${provider.providerName} added as a connected provider.`,
+    metadata: {
+      adapterKey: orchestration.adapterKey,
+      confidenceScore:
+        orchestration.resourceResolution?.confidenceScore ?? orchestration.verification.confidenceScore,
+      connectionState: orchestration.verification.connectionState
+    }
   });
 
-  redirect(`/app/wallets/${parsed.walletId}/providers/${provider.id}`);
+  if (setupChain && returnTo === `/app/wallets/${parsed.walletId}/setup`) {
+    const nextTarget = await getNextSetupConnectionTarget(parsed.walletId);
+
+    if (nextTarget && nextTarget.status !== "connected") {
+      if (nextTarget.href?.startsWith(`/app/wallets/${parsed.walletId}`)) {
+        redirect(nextTarget.href);
+      }
+
+      if (nextTarget.providerSlug) {
+        redirect(
+          buildSetupTargetHref({
+            walletId: parsed.walletId,
+            providerSlug: nextTarget.providerSlug,
+            websiteId: parsed.websiteId ?? null,
+            returnTo,
+            setupChain: true
+          })
+        );
+      }
+    }
+
+    redirect(
+      `/app/wallets/${parsed.walletId}/setup?setupConnected=${encodeURIComponent(providerTemplateSlug ?? parsed.providerName)}&setupComplete=1`
+    );
+  }
+
+  redirect(`${returnTo ?? `/app/wallets/${parsed.walletId}/providers/${provider.id}`}${returnTo?.includes("?") ? "&" : "?"}${existingProviderId ? "reconnected=1" : "connected=1"}`);
+}
+
+export async function startProviderOAuth(formData: FormData) {
+  const session = await requireSession();
+
+  const walletId = String(formData.get("walletId") ?? "");
+  const connResult = providerConnectionSchema.safeParse({
+    walletId,
+    websiteId: formData.get("websiteId") || undefined,
+    providerName: formData.get("providerName"),
+    displayLabel: formData.get("displayLabel") || undefined,
+    category: formData.get("category"),
+    connectionMethod: "OAUTH",
+    connectedAccountLabel: formData.get("connectedAccountLabel") || undefined,
+    externalProjectId: formData.get("externalProjectId") || undefined,
+    externalTeamId: formData.get("externalTeamId") || undefined,
+    dashboardUrl: formData.get("dashboardUrl") || undefined,
+    billingUrl: formData.get("billingUrl") || undefined,
+    editUrl: formData.get("editUrl") || undefined,
+    supportUrl: formData.get("supportUrl") || undefined,
+    ownerDescription: formData.get("ownerDescription") || undefined,
+    notes: formData.get("notes") || undefined,
+    monthlyCostEstimate: formData.get("monthlyCostEstimate")
+      ? Number(formData.get("monthlyCostEstimate"))
+      : undefined,
+    renewalDate: formData.get("renewalDate") || undefined
+  });
+
+  const providerTemplateSlug = String(formData.get("providerTemplateSlug") ?? "").trim() || undefined;
+  const existingProviderId = String(formData.get("providerId") ?? "").trim() || undefined;
+  const returnTo = sanitizeReturnPath(walletId, formData.get("returnTo"));
+  const setupChain = String(formData.get("setupChain") ?? "") === "1";
+  const errorReturnUrl = `/app/wallets/${walletId}/providers/new?template=${encodeURIComponent(providerTemplateSlug ?? "custom")}${existingProviderId ? `&providerId=${encodeURIComponent(existingProviderId)}` : ""}${connResult.success && connResult.data.websiteId ? `&websiteId=${encodeURIComponent(connResult.data.websiteId)}` : ""}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}${setupChain ? "&setupChain=1" : ""}`;
+
+  if (!connResult.success) {
+    const msg = connResult.error.errors[0]?.message ?? "Please check the form and try again.";
+    redirect(`${errorReturnUrl}&formError=${encodeURIComponent(msg)}`);
+  }
+
+  const parsed = connResult.data;
+  await requireWalletCapability(parsed.walletId, session.user.id, "provider.write");
+
+  if (parsed.websiteId) {
+    await requireWebsiteInWallet(parsed.walletId, parsed.websiteId);
+  }
+
+  if (existingProviderId) {
+    await requireProviderInWallet(parsed.walletId, existingProviderId);
+  }
+
+  if (!providerTemplateSlug) {
+    redirect(`${errorReturnUrl}&formError=${encodeURIComponent("Choose a provider from the catalog before starting OAuth.")}`);
+  }
+
+  const adapter = getProviderAdapter(providerTemplateSlug);
+  if (!adapter.getOAuthConfig?.()) {
+    redirect(`${errorReturnUrl}&formError=${encodeURIComponent("OAuth is not available for this provider yet.")}`);
+  }
+
+  try {
+    const origin = await getRequestOrigin();
+    const authorizationUrl = await buildProviderOAuthAuthorizationUrl({
+      origin,
+      context: {
+        userId: session.user.id,
+        walletId: parsed.walletId,
+        websiteId: parsed.websiteId,
+        providerSlug: providerTemplateSlug,
+        providerName: parsed.providerName,
+        category: parsed.category,
+        providerId: existingProviderId,
+        displayLabel: parsed.displayLabel,
+        ownerDescription: parsed.ownerDescription,
+        notes: parsed.notes,
+        returnTo,
+        setupChain,
+        errorReturnTo: errorReturnUrl
+      }
+    });
+
+    redirect(authorizationUrl);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not start the OAuth connection for this provider.";
+    redirect(`${errorReturnUrl}&formError=${encodeURIComponent(message)}`);
+  }
 }
 
 export async function createOwnerInvite(formData: FormData) {
@@ -845,6 +1049,83 @@ export async function updateWalletSettings(formData: FormData) {
   redirect(`/app/wallets/${parsed.walletId}/settings?updated=1`);
 }
 
+export async function saveWalletSetupProfile(formData: FormData) {
+  const session = await requireSession();
+  const walletId = String(formData.get("walletId") ?? "");
+
+  await requireWalletCapability(walletId, session.user.id, "wallet.write");
+
+  const result = setupProfileSchema.safeParse({
+    setupIntent: formData.get("setupIntent") || undefined,
+    updateCadence: formData.get("updateCadence") || undefined,
+    domainProviderSlug: formData.get("domainProviderSlug") || undefined,
+    hostingProviderSlug: formData.get("hostingProviderSlug") || undefined,
+    cmsProviderSlug: formData.get("cmsProviderSlug") || undefined,
+    databaseProviderSlug: formData.get("databaseProviderSlug") || undefined,
+    paymentsProviderSlug: formData.get("paymentsProviderSlug") || undefined,
+    analyticsProviderSlug: formData.get("analyticsProviderSlug") || undefined,
+    authProviderSlug: formData.get("authProviderSlug") || undefined,
+    schedulingProviderSlug: formData.get("schedulingProviderSlug") || undefined,
+    supportProviderSlug: formData.get("supportProviderSlug") || undefined,
+    emailProviderSlug: formData.get("emailProviderSlug") || undefined,
+    notes: formData.get("notes") || undefined
+  });
+
+  if (!result.success) {
+    const message = result.error.errors[0]?.message ?? "Please check the setup answers and try again.";
+    redirect(`/app/wallets/${walletId}/setup?formError=${encodeURIComponent(message)}`);
+  }
+
+  const existing = await prisma.setting.findFirst({
+    where: {
+      scope: "WALLET",
+      walletId,
+      key: "setupProfile"
+    }
+  });
+
+  const previousProfile = parseStoredSetupProfile(existing?.value);
+
+  if (existing) {
+    await prisma.setting.update({
+      where: { id: existing.id },
+      data: { value: result.data }
+    });
+  } else {
+    await prisma.setting.create({
+      data: {
+        scope: "WALLET",
+        walletId,
+        key: "setupProfile",
+        value: result.data
+      }
+    });
+  }
+
+  if (previousProfile.setupIntent !== result.data.setupIntent) {
+    await createInAppNotification({
+      userId: session.user.id,
+      walletId,
+      type: "SYSTEM",
+      subject: "Setup path updated",
+      body: "RAEYL updated the setup flow and next recommended connections for this wallet.",
+      ctaUrl: `/app/wallets/${walletId}/setup`
+    });
+  }
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId,
+    entityType: "SETTING",
+    entityId: walletId,
+    action: "setup.profile.updated",
+    summary: "Wallet setup answers were updated."
+  });
+
+  redirect(`/app/wallets/${walletId}/setup?saved=1`);
+}
+
 export async function acceptInvite(token: string) {
   const session = await requireSession();
   const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -983,6 +1264,10 @@ export async function createEditRoute(formData: FormData) {
   await requireWalletCapability(parsed.walletId, session.user.id, "website.write");
   await requireWebsiteInWallet(parsed.walletId, parsed.websiteId);
 
+  if (parsed.providerId) {
+    await requireProviderInWallet(parsed.walletId, parsed.providerId);
+  }
+
   if (parsed.isPrimary) {
     await prisma.editRoute.updateMany({
       where: { websiteId: parsed.websiteId },
@@ -1022,6 +1307,128 @@ export async function createEditRoute(formData: FormData) {
   });
 
   redirect(`/app/wallets/${parsed.walletId}/websites/${parsed.websiteId}`);
+}
+
+export async function createSuggestedEditRoute(formData: FormData) {
+  const session = await requireSession();
+
+  const walletId = String(formData.get("walletId") ?? "");
+  const providerId = String(formData.get("providerId") ?? "");
+  const suggestionIndex = Number(formData.get("suggestionIndex") ?? -1);
+
+  await requireWalletCapability(walletId, session.user.id, "website.write");
+  await requireProviderInWallet(walletId, providerId);
+
+  const provider = await prisma.providerConnection.findFirst({
+    where: {
+      id: providerId,
+      walletId
+    },
+    select: {
+      id: true,
+      walletId: true,
+      websiteId: true,
+      editDestinationHints: true,
+      displayLabel: true,
+      providerName: true
+    }
+  });
+
+  if (!provider || !provider.websiteId) {
+    throw new Error("This provider is not linked to a website yet.");
+  }
+
+  await requireWebsiteInWallet(walletId, provider.websiteId);
+
+  const suggestions = Array.isArray(provider.editDestinationHints)
+    ? provider.editDestinationHints.filter(
+        (item): item is Prisma.JsonObject => isJsonObject(item)
+      )
+    : [];
+
+  const suggestion = suggestions[suggestionIndex];
+  if (!suggestion) {
+    throw new Error("Suggested route not found.");
+  }
+
+  const label = typeof suggestion["label"] === "string" ? suggestion["label"] : "Suggested route";
+  const description =
+    typeof suggestion["purpose"] === "string" ? suggestion["purpose"] : "Open the suggested editing surface.";
+  const destinationUrl = typeof suggestion["destinationUrl"] === "string" ? suggestion["destinationUrl"] : "";
+  const contentKey = typeof suggestion["destinationType"] === "string" ? suggestion["destinationType"] : undefined;
+  const recommendedPrimary = suggestion["recommendedPrimary"] === true;
+  const visibleToRoles = Array.isArray(suggestion["visibleToRoles"])
+    ? suggestion["visibleToRoles"].filter(
+        (role): role is WalletRole =>
+          typeof role === "string" &&
+          [
+            "PLATFORM_ADMIN",
+            "WALLET_OWNER",
+            "DEVELOPER",
+            "EDITOR",
+            "VIEWER",
+            "BILLING_MANAGER",
+            "SUPPORT"
+          ].includes(role)
+      )
+    : (["WALLET_OWNER", "DEVELOPER", "EDITOR"] as WalletRole[]);
+
+  if (!destinationUrl) {
+    throw new Error("Suggested route does not have a destination URL.");
+  }
+
+  const duplicate = await prisma.editRoute.findFirst({
+    where: {
+      walletId,
+      websiteId: provider.websiteId,
+      providerId,
+      destinationUrl
+    }
+  });
+
+  if (duplicate) {
+    redirect(`/app/wallets/${walletId}/websites/${provider.websiteId}?route=exists`);
+  }
+
+  if (recommendedPrimary) {
+    await prisma.editRoute.updateMany({
+      where: { websiteId: provider.websiteId },
+      data: { isPrimary: false }
+    });
+  }
+
+  const route = await prisma.editRoute.create({
+    data: {
+      walletId,
+      websiteId: provider.websiteId,
+      providerId,
+      label,
+      description,
+      destinationUrl,
+      contentKey,
+      isPrimary: recommendedPrimary,
+      visibleToRoles: visibleToRoles.length ? visibleToRoles : ["WALLET_OWNER", "DEVELOPER", "EDITOR"],
+      sortOrder: recommendedPrimary ? 0 : 10,
+      isEnabled: true
+    }
+  });
+
+  await prisma.wallet.update({
+    where: { id: walletId },
+    data: { setupStatus: "ROUTES_ADDED" }
+  });
+
+  await recordAuditEvent({
+    actorUserId: session.user.id,
+    actorType: "USER",
+    walletId,
+    entityType: "WEBSITE",
+    entityId: route.id,
+    action: "edit_route.suggested_created",
+    summary: `Suggested edit path "${label}" created from ${provider.displayLabel ?? provider.providerName}.`
+  });
+
+  redirect(`/app/wallets/${walletId}/websites/${provider.websiteId}?route=created`);
 }
 
 export async function deleteEditRoute(formData: FormData) {

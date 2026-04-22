@@ -59,6 +59,7 @@ export default async function AdminPage() {
                 { href: "/admin/wallets", label: "Wallets" },
                 { href: "/admin/subscriptions", label: "Subscriptions" },
                 { href: "/admin/referrals", label: "Referrals" },
+                { href: "/admin/providers", label: "Provider diagnostics" },
                 { href: "/admin/alerts", label: "Alerts" },
                 { href: "/admin/support", label: "Support queue" },
                 { href: "/admin/audit", label: "Audit log" }

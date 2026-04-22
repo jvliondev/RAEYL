@@ -1,4 +1,4 @@
-import { HealthStatus, ProviderConnectionMethod, ProviderStatus, SyncState } from "@prisma/client";
+import { HealthStatus, ProviderConnectionMethod, ProviderStatus, SyncState } from "@prisma/client/index";
 import { getVercelConnectionSnapshot } from "@/lib/services/vercel-service";
 
 type VerificationInput = {
@@ -28,6 +28,27 @@ type VerificationResult = {
 
 function isVercelProvider(providerName: string) {
   return providerName.trim().toLowerCase().includes("vercel");
+}
+
+function isSupabaseProvider(providerName: string) {
+  return providerName.trim().toLowerCase().includes("supabase");
+}
+
+async function fetchJson<T>(url: string, token: string) {
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Provider verification failed (${response.status}): ${body || "Unknown response."}`);
+  }
+
+  return (await response.json()) as T;
 }
 
 async function verifyVercelToken({
@@ -84,6 +105,105 @@ async function verifyVercelToken({
   };
 }
 
+async function verifySupabaseToken({
+  apiToken,
+  externalProjectId,
+  externalTeamId
+}: VerificationInput): Promise<VerificationResult> {
+  if (!apiToken) {
+    throw new Error("A Supabase personal access token is required to connect automatically.");
+  }
+
+  const [organizations, projects] = await Promise.all([
+    fetchJson<Array<{ id: string; slug?: string; name?: string }>>("https://api.supabase.com/v1/organizations", apiToken).catch(() => []),
+    fetchJson<
+      Array<{
+        id: string;
+        ref?: string;
+        organization_id?: string;
+        organization_slug?: string;
+        name?: string;
+        region?: string;
+        status?: string;
+        database?: {
+          host?: string;
+          version?: string;
+        };
+      }>
+    >("https://api.supabase.com/v1/projects", apiToken).catch(() => [])
+  ]);
+
+  const selectedOrganization =
+    organizations.find(
+      (organization) =>
+        organization.id === externalTeamId ||
+        organization.slug === externalTeamId ||
+        organization.name === externalTeamId
+    ) ?? (organizations.length === 1 ? organizations[0] : undefined);
+
+  const visibleProjects = selectedOrganization
+    ? projects.filter(
+        (project) =>
+          project.organization_id === selectedOrganization.id ||
+          project.organization_slug === selectedOrganization.slug
+      )
+    : projects;
+
+  const selectedProject =
+    visibleProjects.find(
+      (project) =>
+        project.id === externalProjectId ||
+        project.ref === externalProjectId ||
+        project.name === externalProjectId
+    ) ?? (visibleProjects.length === 1 ? visibleProjects[0] : undefined);
+
+  const accountLabel =
+    selectedOrganization?.name ??
+    selectedOrganization?.slug ??
+    projects[0]?.organization_slug ??
+    "Verified Supabase account";
+
+  const selectedProjectRef = selectedProject?.ref ?? selectedProject?.id;
+  const organizationSlug = selectedOrganization?.slug ?? selectedProject?.organization_slug;
+
+  return {
+    status: ProviderStatus.CONNECTED,
+    healthStatus: selectedProject || visibleProjects.length <= 1 ? HealthStatus.HEALTHY : HealthStatus.ATTENTION_NEEDED,
+    syncState: SyncState.SYNCED,
+    connectedAccountLabel: selectedProject?.name ? `${accountLabel} • ${selectedProject.name}` : accountLabel,
+    externalProjectId: selectedProjectRef,
+    externalTeamId: selectedOrganization?.id,
+    dashboardUrl: selectedProjectRef
+      ? `https://supabase.com/dashboard/project/${selectedProjectRef}`
+      : "https://supabase.com/dashboard/projects",
+    billingUrl: organizationSlug
+      ? `https://supabase.com/dashboard/org/${organizationSlug}/billing`
+      : "https://supabase.com/dashboard/account/tokens",
+    tokenMetadata: {
+      verifiedProvider: "supabase",
+      verifiedAccount: accountLabel,
+      projectCount: visibleProjects.length,
+      organizationCount: organizations.length
+    },
+    metadata: {
+      accountLabel,
+      selectedProjectName: selectedProject?.name ?? "not selected",
+      selectedProjectRef: selectedProjectRef ?? "not selected",
+      selectedOrganizationSlug: organizationSlug ?? "not selected",
+      databaseHost: selectedProject?.database?.host ?? "not available",
+      region: selectedProject?.region ?? "not available",
+      availableProjects:
+        visibleProjects.slice(0, 5).map((project) => project.name ?? project.ref ?? project.id).join(", ") || "none"
+    },
+    notes:
+      visibleProjects.length > 1 && !selectedProject
+        ? "Token verified. Multiple Supabase projects were found; choose the right project ref so this wallet stays precise."
+        : undefined,
+    lastSyncAt: new Date(),
+    lastHealthCheckAt: new Date()
+  };
+}
+
 export async function verifyProviderConnection(input: VerificationInput): Promise<VerificationResult | null> {
   if (input.connectionMethod === ProviderConnectionMethod.OAUTH) {
     throw new Error("OAuth connections are not available yet. Use API token or manual record for now.");
@@ -112,6 +232,10 @@ export async function verifyProviderConnection(input: VerificationInput): Promis
 
   if (input.connectionMethod === ProviderConnectionMethod.API_TOKEN && isVercelProvider(input.providerName)) {
     return verifyVercelToken(input);
+  }
+
+  if (input.connectionMethod === ProviderConnectionMethod.API_TOKEN && isSupabaseProvider(input.providerName)) {
+    return verifySupabaseToken(input);
   }
 
   if (input.connectionMethod === ProviderConnectionMethod.API_TOKEN) {

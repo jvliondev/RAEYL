@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { recordAuditEvent } from "@/lib/audit";
-import type { NotificationChannel, NotificationType } from "@prisma/client";
+import type { NotificationChannel, NotificationType } from "@prisma/client/index";
 
 async function isNotificationEnabledForUser(
   userId: string,

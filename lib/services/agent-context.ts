@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { MembershipStatus } from "@prisma/client";
+import { MembershipStatus } from "@prisma/client/index";
 
 export type WalletAgentContext = {
   walletId: string;

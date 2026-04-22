@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { WalletRole } from "@prisma/client";
+import { WalletRole } from "@prisma/client/index";
 
 import { inviteRepository } from "@/lib/repositories/invite-repository";
 import { prisma } from "@/lib/prisma";

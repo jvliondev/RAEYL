@@ -1,4 +1,4 @@
-import { getTemplateBySlug } from "@/lib/data/provider-catalog";
+import { getProviderAdapter } from "@/lib/providers/registry";
 
 type ProviderFrameworkProfile = {
   slug: string;
@@ -14,91 +14,43 @@ type ProviderFrameworkProfile = {
   ownerTrustNote: string;
 };
 
-const PROFILES: Record<string, ProviderFrameworkProfile> = {
-  vercel: {
-    slug: "vercel",
-    bestConnectionMethod: "API_TOKEN",
-    autoImportLabel: "Verify account, discover projects, and lock the wallet to the right deployment.",
-    oauthStatus: "planned",
-    supportsLiveVerification: true,
-    supportsHealthChecks: true,
-    supportsBillingSync: false,
-    supportsEditRouting: false,
-    fieldsToPrioritize: ["apiToken", "externalProjectId", "externalTeamId"],
-    reconnectAdvice: "Reconnect with a fresh token if project health stops updating or the team changes.",
-    ownerTrustNote: "When this is verified, the owner can trust that hosting status is coming from the live platform."
-  },
-  sanity: {
-    slug: "sanity",
-    bestConnectionMethod: "API_TOKEN",
-    autoImportLabel: "Store the Studio links and prepare the CMS for direct edit routing.",
-    oauthStatus: "planned",
-    supportsLiveVerification: false,
-    supportsHealthChecks: false,
-    supportsBillingSync: false,
-    supportsEditRouting: true,
-    fieldsToPrioritize: ["dashboardUrl", "editUrl", "apiToken"],
-    reconnectAdvice: "Keep the Studio URL current so owners always land in the right editing workspace.",
-    ownerTrustNote: "This tool becomes valuable when the editing link is explicit and labeled in plain language."
-  },
-  stripe: {
-    slug: "stripe",
-    bestConnectionMethod: "API_TOKEN",
-    autoImportLabel: "Store billing and dashboard links with room for future payment health checks.",
-    oauthStatus: "planned",
-    supportsLiveVerification: false,
-    supportsHealthChecks: false,
-    supportsBillingSync: false,
-    supportsEditRouting: false,
-    fieldsToPrioritize: ["dashboardUrl", "billingUrl", "apiToken"],
-    reconnectAdvice: "Reconnect if payment owners change or the account moves to another workspace.",
-    ownerTrustNote: "Owners need a clear explanation of what Stripe does and when to open it."
-  },
-  "cloudflare-dns": {
-    slug: "cloudflare-dns",
-    bestConnectionMethod: "API_TOKEN",
-    autoImportLabel: "Keep DNS and domain access discoverable in one place.",
-    oauthStatus: "planned",
-    supportsLiveVerification: false,
-    supportsHealthChecks: false,
-    supportsBillingSync: false,
-    supportsEditRouting: false,
-    fieldsToPrioritize: ["dashboardUrl", "billingUrl", "apiToken"],
-    reconnectAdvice: "Reconnect if DNS ownership changes or the zone moves to another account.",
-    ownerTrustNote: "Domain tools are high-trust surfaces because owners care about renewals and continuity."
-  }
-};
+export function getProviderFrameworkProfile(input: { slug?: string | null; providerName?: string | null }): ProviderFrameworkProfile {
+  const adapter = getProviderAdapter(input.slug ?? input.providerName);
+  const definition = adapter.getProviderDefinition();
+  const authStrategy = adapter.getAuthStrategy();
+  const capabilities = adapter.getCapabilities();
+  const oauthConfig = adapter.getOAuthConfig?.();
+  const ownerSummary = adapter.getOwnerSummary(
+    {
+      walletId: "preview",
+      businessName: "Preview wallet"
+    },
+    {
+      providerName: definition.displayName,
+      providerSlug: definition.slug,
+      category: definition.category,
+      metadataSnapshot: {}
+    }
+  );
 
-const DEFAULT_PROFILE: ProviderFrameworkProfile = {
-  slug: "custom",
-  bestConnectionMethod: "MANUAL",
-  autoImportLabel: "Store the dashboard, support, billing, and owner explanation cleanly.",
-  oauthStatus: "not_recommended",
-  supportsLiveVerification: false,
-  supportsHealthChecks: false,
-  supportsBillingSync: false,
-  supportsEditRouting: false,
-  fieldsToPrioritize: ["dashboardUrl", "billingUrl", "ownerDescription"],
-  reconnectAdvice: "Review this record manually when account access or ownership changes.",
-  ownerTrustNote: "A clear description and working links matter more than raw technical metadata."
-};
-
-function slugify(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, "-");
-}
-
-export function getProviderFrameworkProfile(input: { slug?: string | null; providerName?: string | null }) {
-  const templateSlug = input.slug ? slugify(input.slug) : null;
-  const direct = templateSlug ? PROFILES[templateSlug] : null;
-
-  if (direct) {
-    return direct;
-  }
-
-  const derivedTemplate = input.providerName ? getTemplateBySlug(slugify(input.providerName)) : undefined;
-  if (derivedTemplate?.slug && PROFILES[derivedTemplate.slug]) {
-    return PROFILES[derivedTemplate.slug];
-  }
-
-  return DEFAULT_PROFILE;
+  return {
+    slug: definition.slug,
+    bestConnectionMethod: authStrategy.connectionMethod,
+    autoImportLabel: ownerSummary.importedSummary,
+    oauthStatus:
+      authStrategy.type === "oauth" || authStrategy.type === "hybrid" || Boolean(oauthConfig)
+        ? "available"
+        : capabilities.includes("oauth")
+          ? "planned"
+          : "not_recommended",
+    supportsLiveVerification: capabilities.includes("apiToken") || capabilities.includes("oauth"),
+    supportsHealthChecks: capabilities.includes("healthChecks"),
+    supportsBillingSync: capabilities.includes("billingSync"),
+    supportsEditRouting: capabilities.includes("editRouteInference"),
+    fieldsToPrioritize: authStrategy.fields.map((field) => field.key),
+    reconnectAdvice: capabilities.includes("reconnect")
+      ? "Reconnect with fresh credentials if the account changes or live verification falls behind."
+      : "Review this record manually whenever ownership or access changes.",
+    ownerTrustNote: ownerSummary.whyItMatters
+  };
 }

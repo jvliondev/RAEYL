@@ -50,7 +50,9 @@ export interface ProviderRecord {
   accountLabel: string;
   templateSlug?: string | null;
   status: string;
+  connectionState?: string;
   health: HealthState;
+  confidenceScore?: number | null;
   connectionMethod?: string;
   syncState?: string;
   dashboardUrl: string;
@@ -61,6 +63,16 @@ export interface ProviderRecord {
   renewalDate?: string;
   ownerDescription: string;
   metadata: Record<string, string>;
+  diagnostics?: Record<string, string>;
+  suggestedRoutes?: Array<{
+    label: string;
+    purpose: string;
+    destinationUrl: string;
+    destinationType: string;
+    confidenceScore: number;
+    visibleToRoles: string[];
+    recommendedPrimary: boolean;
+  }>;
   credentials?: Array<{
     id: string;
     type: string;

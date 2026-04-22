@@ -10,6 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { requireSession } from "@/lib/auth/access";
 import { getWalletWebsiteDetailData } from "@/lib/data/wallets";
 
+function firstQueryValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
+
 export default async function NewEditRoutePage({
   params,
   searchParams
@@ -28,6 +36,14 @@ export default async function NewEditRoutePage({
   );
 
   const hasPrimary = website.editRoutes.some((r) => r.isPrimary);
+  const defaults = {
+    label: firstQueryValue(sp.label).slice(0, 120),
+    destinationUrl: firstQueryValue(sp.destinationUrl),
+    description: firstQueryValue(sp.description).slice(0, 500),
+    providerId: firstQueryValue(sp.providerId),
+    contentKey: firstQueryValue(sp.contentKey).slice(0, 120),
+    isPrimary: firstQueryValue(sp.isPrimary) === "true"
+  };
 
   return (
     <AppShell
@@ -51,6 +67,7 @@ export default async function NewEditRoutePage({
                   name="label"
                   required
                   placeholder="Edit homepage content"
+                  defaultValue={defaults.label}
                 />
               </FormField>
               <FormField label="Destination URL" className="md:col-span-2">
@@ -59,16 +76,18 @@ export default async function NewEditRoutePage({
                   type="url"
                   required
                   placeholder="https://studio.sanity.io/..."
+                  defaultValue={defaults.destinationUrl}
                 />
               </FormField>
               <FormField label="Description" className="md:col-span-2">
                 <Textarea
                   name="description"
                   placeholder="Explain what the owner can do here in plain language. E.g. Update text, images, or services on the homepage."
+                  defaultValue={defaults.description}
                 />
               </FormField>
               <FormField label="Linked tool (optional)">
-                <Select name="providerId" defaultValue="">
+                <Select name="providerId" defaultValue={defaults.providerId}>
                   <option value="">No linked tool</option>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -78,7 +97,7 @@ export default async function NewEditRoutePage({
                 </Select>
               </FormField>
               <FormField label="Content key (optional)">
-                <Input name="contentKey" placeholder="homepage" />
+                <Input name="contentKey" placeholder="homepage" defaultValue={defaults.contentKey} />
               </FormField>
             </CardContent>
           </Card>
@@ -128,7 +147,7 @@ export default async function NewEditRoutePage({
                   type="checkbox"
                   name="isPrimary"
                   value="true"
-                  defaultChecked={!hasPrimary}
+                  defaultChecked={defaults.isPrimary || !hasPrimary}
                   className="mt-0.5 h-4 w-4 rounded"
                 />
                 <div>

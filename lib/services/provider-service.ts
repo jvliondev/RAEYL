@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client/index";
 
 import { providerRepository } from "@/lib/repositories/provider-repository";
 import { recordAuditEvent } from "@/lib/audit";

@@ -4,12 +4,15 @@
  * Called from server actions or API routes — never from the edge/middleware.
  */
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type ProviderConnection } from "@prisma/client/index";
 
 import { prisma } from "@/lib/prisma";
-import { getVercelProjectHealth, mapVercelStateToHealth } from "./vercel-service";
+import { getProviderAdapter } from "@/lib/providers/registry";
+import { refreshProviderOAuthToken } from "@/lib/providers/oauth";
 import { recordAuditEvent } from "@/lib/audit";
 import { decryptSecret } from "@/lib/security/encryption";
+import { storeProviderSecret } from "@/lib/services/provider-credentials";
+import { syncProviderConnectionSignals } from "@/lib/services/provider-signal-service";
 
 export type HealthCheckResult = {
   providerId: string;
@@ -28,10 +31,32 @@ export async function checkProviderHealth(providerId: string): Promise<HealthChe
   const provider = await prisma.providerConnection.findUnique({
     where: { id: providerId },
     include: {
+      wallet: {
+        include: {
+          websites: {
+            orderBy: {
+              createdAt: "asc"
+            },
+            take: 1
+          },
+          settings: {
+            where: {
+              scope: "WALLET",
+              key: "setupProfile"
+            },
+            take: 1
+          }
+        }
+      },
       secrets: {
-        where: { status: "ACTIVE", secretType: "API_KEY" },
+        where: {
+          status: "ACTIVE",
+          secretType: {
+            in: ["API_KEY", "ACCESS_TOKEN"]
+          }
+        },
         orderBy: { createdAt: "desc" },
-        take: 1
+        take: 4
       }
     }
   });
@@ -47,55 +72,19 @@ export async function checkProviderHealth(providerId: string): Promise<HealthChe
     };
   }
 
-  const slug = provider.providerName.toLowerCase().replace(/\s+/g, "-");
+  const adapter = getProviderAdapter(provider.adapterKey ?? provider.providerName);
+  let token =
+    provider.connectionMethod === "OAUTH"
+      ? provider.secrets.find((secret) => secret.secretType === "ACCESS_TOKEN") ?? provider.secrets[0]
+      : provider.secrets.find((secret) => secret.secretType === "API_KEY") ?? provider.secrets[0];
+  let rawToken = token ? decryptSecret(token.encryptedValue) : undefined;
   const now = new Date().toISOString();
+  const refreshSecret =
+    provider.connectionMethod === "OAUTH"
+      ? provider.secrets.find((secret) => secret.secretType === "REFRESH_TOKEN")
+      : undefined;
 
-  // Vercel live check
-  if (slug === "vercel" || slug.includes("vercel")) {
-    const token = provider.secrets[0];
-    const projectId = provider.externalProjectId;
-    const teamId = provider.externalTeamId;
-
-    if (!token || !projectId) {
-      const result: HealthCheckResult = {
-        providerId,
-        providerName: provider.providerName,
-        healthStatus: "ATTENTION_NEEDED",
-        syncState: "PENDING",
-        detail: "API token or project ID not configured. Add these in provider settings.",
-        checkedAt: now
-      };
-      await persistHealthResult(provider.id, result);
-      return result;
-    }
-
-    const rawToken = decryptSecret(token.encryptedValue);
-    const health = await getVercelProjectHealth(rawToken, projectId, teamId);
-
-    const result: HealthCheckResult = {
-      providerId,
-      providerName: provider.providerName,
-      healthStatus: mapVercelStateToHealth(health.deploymentState),
-      syncState: health.error ? "FAILED" : "SYNCED",
-      detail: health.error
-        ? `Check failed: ${health.error}`
-        : `Last deployment: ${health.deploymentState} · ${health.lastDeployedAt ?? "unknown time"}`,
-      checkedAt: now
-    };
-    await persistHealthResult(provider.id, result, {
-      ...(provider.metadata && typeof provider.metadata === "object" && !Array.isArray(provider.metadata)
-        ? (provider.metadata as Record<string, unknown>)
-        : {}),
-      deploymentState: health.deploymentState,
-      domains: health.domains.join(", "),
-      deploymentUrl: health.deploymentUrl ?? "",
-      selectedProjectName: health.projectName ?? provider.externalProjectId ?? "not selected"
-    });
-    return result;
-  }
-
-  // Manual/unknown provider — just confirm it's connected
-  if (provider.connectionMethod === "MANUAL") {
+  if (provider.connectionMethod === "MANUAL" && !adapter.runHealthCheck) {
     const result: HealthCheckResult = {
       providerId,
       providerName: provider.providerName,
@@ -104,36 +93,189 @@ export async function checkProviderHealth(providerId: string): Promise<HealthChe
       detail: "Manually managed — no live sync available.",
       checkedAt: now
     };
-    await persistHealthResult(provider.id, result);
+    await persistHealthResult(provider, result);
     return result;
   }
 
-  // Default: can't check without a live integration
+  if (!adapter.runHealthCheck) {
+    const result: HealthCheckResult = {
+      providerId,
+      providerName: provider.providerName,
+      healthStatus: "UNKNOWN",
+      syncState: "PENDING",
+      detail: "Live health check not yet available for this provider type.",
+      checkedAt: new Date().toISOString()
+    };
+    await persistHealthResult(provider, result);
+    return result;
+  }
+
+  const normalizedMetadata =
+    provider.normalizedMetadata && typeof provider.normalizedMetadata === "object" && !Array.isArray(provider.normalizedMetadata)
+      ? (provider.normalizedMetadata as Record<string, unknown>)
+      : {};
+  const providerSlug =
+    typeof normalizedMetadata.providerSlug === "string"
+      ? normalizedMetadata.providerSlug
+      : provider.adapterKey ?? provider.providerName.toLowerCase();
+
+  if (
+    provider.connectionMethod === "OAUTH" &&
+    refreshSecret &&
+    (!token?.expiresAt || token.expiresAt <= new Date())
+  ) {
+    try {
+      const refreshed = await refreshProviderOAuthToken({
+        providerSlug,
+        refreshToken: decryptSecret(refreshSecret.encryptedValue)
+      });
+
+      await prisma.$transaction(async (tx) => {
+        await storeProviderSecret(tx, {
+          providerConnectionId: provider.id,
+          secretType: "ACCESS_TOKEN",
+          rawValue: refreshed.accessToken,
+          expiresAt: refreshed.expiresIn ? new Date(Date.now() + refreshed.expiresIn * 1000) : undefined,
+          scopes: refreshed.scope?.split(/\s+/).filter(Boolean) ?? []
+        });
+
+        if (refreshed.refreshToken) {
+          await storeProviderSecret(tx, {
+            providerConnectionId: provider.id,
+            secretType: "REFRESH_TOKEN",
+            rawValue: refreshed.refreshToken
+          });
+        }
+      });
+
+      rawToken = refreshed.accessToken;
+      token = {
+        ...token,
+        encryptedValue: "",
+        expiresAt: refreshed.expiresIn ? new Date(Date.now() + refreshed.expiresIn * 1000) : null
+      } as typeof token;
+    } catch (error) {
+      const result: HealthCheckResult = {
+        providerId,
+        providerName: provider.providerName,
+        healthStatus: "DISCONNECTED",
+        syncState: "FAILED",
+        detail: error instanceof Error ? error.message : "OAuth token refresh failed.",
+        checkedAt: now
+      };
+      await persistHealthResult(provider, result);
+      return result;
+    }
+  }
+
+  const primaryWebsite = provider.wallet.websites[0];
+  const setupProfile =
+    provider.wallet.settings[0]?.value &&
+    typeof provider.wallet.settings[0].value === "object" &&
+    !Array.isArray(provider.wallet.settings[0].value)
+      ? (provider.wallet.settings[0].value as Record<string, unknown>)
+      : null;
+
+  const health = await adapter.runHealthCheck(
+    {
+      walletId: provider.walletId,
+      businessName: provider.wallet.businessName,
+      websiteName: provider.wallet.websiteName ?? primaryWebsite?.name ?? null,
+      websiteUrl: provider.wallet.websiteUrl ?? primaryWebsite?.productionUrl ?? null,
+      primaryDomain: primaryWebsite?.primaryDomain ?? null,
+      websiteDescription: provider.wallet.websiteDescription ?? null,
+      businessCategory: provider.wallet.businessCategory ?? null,
+      setupProfile
+    },
+    {
+      walletId: provider.walletId,
+      websiteId: provider.websiteId ?? undefined,
+      providerSlug,
+      providerName: provider.providerName,
+      category: provider.category,
+      connectionMethod: provider.connectionMethod,
+      apiToken: rawToken,
+      externalProjectId: provider.externalProjectId ?? undefined,
+      externalTeamId: provider.externalTeamId ?? undefined,
+      dashboardUrl: provider.dashboardUrl ?? undefined,
+      billingUrl: provider.billingUrl ?? undefined,
+      editUrl: provider.editUrl ?? undefined,
+      supportUrl: provider.supportUrl ?? undefined,
+      ownerDescription: provider.ownerDescription ?? undefined,
+      displayLabel: provider.displayLabel ?? undefined
+    },
+    {
+      providerName: provider.providerName,
+      providerSlug:
+        providerSlug,
+      category: provider.category,
+      accountLabel:
+        typeof normalizedMetadata.accountLabel === "string" ? normalizedMetadata.accountLabel : provider.connectedAccountLabel ?? undefined,
+      connectedAccountLabel:
+        typeof normalizedMetadata.connectedAccountLabel === "string"
+          ? normalizedMetadata.connectedAccountLabel
+          : provider.connectedAccountLabel ?? undefined,
+      accountId: typeof normalizedMetadata.accountId === "string" ? normalizedMetadata.accountId : null,
+      teamId: provider.externalTeamId,
+      projectId: provider.externalProjectId,
+      dashboardUrl: provider.dashboardUrl ?? undefined,
+      billingUrl: provider.billingUrl ?? undefined,
+      supportUrl: provider.supportUrl ?? undefined,
+      editUrl: provider.editUrl ?? undefined,
+      domainData:
+        Array.isArray(normalizedMetadata.domainData) ? normalizedMetadata.domainData.filter((value): value is string => typeof value === "string") : [],
+      metadataSnapshot: normalizedMetadata
+    }
+  );
+
   const result: HealthCheckResult = {
     providerId,
     providerName: provider.providerName,
-    healthStatus: "UNKNOWN",
-    syncState: "PENDING",
-    detail: "Live health check not yet available for this provider type.",
-    checkedAt: now
+    healthStatus: health.state,
+    syncState: health.syncState === "NEVER_SYNCED" ? "PENDING" : health.syncState,
+    detail: health.summary,
+    checkedAt: health.checkedAt
   };
-  await persistHealthResult(provider.id, result);
+  await persistHealthResult(provider, result, {
+    ...normalizedMetadata,
+    lastHealthSummary: health.summary,
+    warnings: health.warnings,
+    ...(health.metadata ?? {})
+  });
+  await syncProviderConnectionSignals(provider.id);
   return result;
 }
 
 async function persistHealthResult(
-  providerId: string,
+  provider: Pick<ProviderConnection, "id" | "connectionState">,
   result: HealthCheckResult,
   metadata?: Record<string, unknown>
 ) {
   await prisma.providerConnection.update({
-    where: { id: providerId },
+    where: { id: provider.id },
     data: {
+      connectionState:
+        result.healthStatus === "DISCONNECTED"
+          ? "DISCONNECTED"
+          : result.healthStatus === "ISSUE_DETECTED"
+            ? "DEGRADED"
+            : provider.connectionState,
       healthStatus: result.healthStatus,
       syncState: result.syncState,
+      reconnectRequired: result.healthStatus === "DISCONNECTED",
+      failureSummary: result.syncState === "FAILED" ? result.detail : null,
       lastHealthCheckAt: new Date(),
       lastSyncAt: result.syncState === "SYNCED" ? new Date() : undefined,
-      ...(metadata ? { metadata: metadata as Prisma.InputJsonValue } : {})
+      ...(metadata ? { normalizedMetadata: metadata as Prisma.InputJsonValue } : {}),
+      ...(metadata
+        ? {
+            healthSnapshot: {
+              state: result.healthStatus,
+              summary: result.detail,
+              checkedAt: result.checkedAt
+            } as Prisma.InputJsonValue
+          }
+        : {})
     }
   });
 }

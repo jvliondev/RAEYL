@@ -106,6 +106,19 @@ enum ProviderConnectionMethod {
   SECURE_LINK
 }
 
+enum ProviderConnectionState {
+  INITIATED
+  AWAITING_AUTH
+  VERIFYING
+  DISCOVERING
+  AWAITING_SELECTION
+  CONNECTED
+  DEGRADED
+  RECONNECT_REQUIRED
+  DISCONNECTED
+  FAILED
+}
+
 enum ProviderStatus {
   NOT_CONNECTED
   CONNECTED
@@ -537,12 +550,17 @@ model ProviderConnection {
   walletId              String
   websiteId             String?
   providerTemplateId    String?
+  adapterKey            String?
   providerName          String
   displayLabel          String?
   category              ProviderCategory
   status                ProviderStatus            @default(NOT_CONNECTED)
+  connectionState       ProviderConnectionState   @default(INITIATED)
   healthStatus          HealthStatus              @default(UNKNOWN)
   syncState             SyncState                 @default(NEVER_SYNCED)
+  connectionConfidence  Int?                      @db.SmallInt
+  reconnectRequired     Boolean                   @default(false)
+  authStrategyKey       String?
   connectedAccountLabel String?
   externalProjectId     String?
   externalTeamId        String?
@@ -552,11 +570,23 @@ model ProviderConnection {
   supportUrl            String?
   ownerDescription      String?
   connectionMethod      ProviderConnectionMethod
+  capabilityFlags       Json?
   tokenMetadata         Json?
+  normalizedMetadata    Json?
+  discoveredResources   Json?
+  billingSnapshot       Json?
+  healthSnapshot        Json?
+  editDestinationHints  Json?
+  setupSignals          Json?
+  handoffSignals        Json?
+  diagnostics           Json?
+  failureCode           String?
+  failureSummary        String?
   metadata              Json?
   notes                 String?
   monthlyCostEstimate   Decimal?                  @db.Decimal(10, 2)
   renewalDate           DateTime?
+  lastVerifiedAt        DateTime?
   lastSyncAt            DateTime?
   lastHealthCheckAt     DateTime?
   createdById           String?
@@ -573,6 +603,8 @@ model ProviderConnection {
 
   @@index([walletId, category])
   @@index([walletId, status])
+  @@index([walletId, connectionState])
+  @@index([adapterKey, connectionState])
   @@index([websiteId])
   @@index([providerTemplateId])
 }

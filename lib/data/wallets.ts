@@ -10,7 +10,7 @@ import {
   SupportPriority,
   SupportStatus,
   type WalletRole
-} from "@prisma/client";
+} from "@prisma/client/index";
 
 import { hasCapability, type Capability } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +25,7 @@ import type {
 import { getBillingConfigurationSummary } from "@/lib/services/billing-service";
 import { getHandoffReadiness } from "@/lib/services/handoff-state";
 import { getWalletTemplateBySlug } from "@/lib/data/wallet-templates";
+import { parseStoredSetupProfile } from "@/lib/services/setup-orchestrator";
 
 function walletAccessWhere(walletId: string, userId: string): Prisma.WalletWhereInput {
   return {
@@ -164,6 +165,10 @@ function jsonRecord(value: Prisma.JsonValue | null | undefined) {
   );
 }
 
+function isJsonObject(value: Prisma.JsonValue): value is Prisma.JsonObject {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 async function getWalletSettingMap(walletId: string, userId?: string) {
   const whereClauses: Prisma.SettingWhereInput[] = [
     { scope: "WALLET", walletId, userId: null }
@@ -189,7 +194,9 @@ function mapProvider(provider: {
   displayLabel: string | null;
   connectedAccountLabel: string | null;
   status: ProviderStatus;
+  connectionState?: string | null;
   healthStatus: string;
+  connectionConfidence?: number | null;
   connectionMethod: string;
   syncState: string;
   dashboardUrl: string | null;
@@ -197,6 +204,9 @@ function mapProvider(provider: {
   editUrl: string | null;
   supportUrl: string | null;
   ownerDescription: string | null;
+  diagnostics?: Prisma.JsonValue | null;
+  normalizedMetadata?: Prisma.JsonValue | null;
+  editDestinationHints?: Prisma.JsonValue | null;
   metadata: Prisma.JsonValue | null;
   monthlyCostEstimate: Prisma.Decimal | null;
   renewalDate: Date | null;
@@ -210,7 +220,9 @@ function mapProvider(provider: {
     label: provider.displayLabel ?? humanizeEnum(provider.category),
     accountLabel: provider.connectedAccountLabel ?? provider.providerName,
     status: humanizeEnum(provider.status),
+    connectionState: provider.connectionState ? humanizeEnum(provider.connectionState) : undefined,
     health: mapHealthStatus(provider.healthStatus),
+    confidenceScore: provider.connectionConfidence ?? null,
     connectionMethod: humanizeEnum(provider.connectionMethod),
     syncState: humanizeEnum(provider.syncState),
     dashboardUrl: provider.dashboardUrl ?? "",
@@ -223,7 +235,30 @@ function mapProvider(provider: {
     lastHealthCheckAt: provider.lastHealthCheckAt?.toISOString() ?? null,
     ownerDescription:
       provider.ownerDescription ?? "This connected tool is part of the website stack for this wallet.",
-    metadata: jsonRecord(provider.metadata)
+    metadata: jsonRecord(provider.normalizedMetadata ?? provider.metadata),
+    diagnostics: jsonRecord(provider.diagnostics),
+    suggestedRoutes:
+      provider.editDestinationHints && Array.isArray(provider.editDestinationHints)
+        ? provider.editDestinationHints
+            .filter(isJsonObject)
+            .map((item) => ({
+              label: typeof item["label"] === "string" ? item["label"] : "Suggested route",
+              purpose:
+                typeof item["purpose"] === "string"
+                  ? item["purpose"]
+                  : "Open the suggested editing surface.",
+              destinationUrl: typeof item["destinationUrl"] === "string" ? item["destinationUrl"] : "",
+              destinationType:
+                typeof item["destinationType"] === "string" ? item["destinationType"] : "custom",
+              confidenceScore:
+                typeof item["confidenceScore"] === "number" ? item["confidenceScore"] : 0,
+              visibleToRoles: Array.isArray(item["visibleToRoles"])
+                ? item["visibleToRoles"].filter((role): role is string => typeof role === "string")
+                : [],
+              recommendedPrimary: item["recommendedPrimary"] === true
+            }))
+            .filter((item) => Boolean(item.destinationUrl))
+        : []
   };
 }
 
@@ -506,6 +541,12 @@ export async function getWalletProvidersData(walletId: string, userId: string) {
 
   const settingMap = await getWalletSettingMap(wallet.id, userId);
   const templateSlug = typeof settingMap.walletTemplate === "string" ? settingMap.walletTemplate : null;
+  const automationSnapshot =
+    settingMap.providerAutomationSnapshot &&
+    typeof settingMap.providerAutomationSnapshot === "object" &&
+    !Array.isArray(settingMap.providerAutomationSnapshot)
+      ? (settingMap.providerAutomationSnapshot as Record<string, unknown>)
+      : null;
 
   return {
     walletContext: {
@@ -515,7 +556,39 @@ export async function getWalletProvidersData(walletId: string, userId: string) {
       role: role.toLowerCase()
     },
     providers: wallet.providers.map(mapProvider),
-    templateSlug
+    templateSlug,
+    automationSnapshot: automationSnapshot
+      ? {
+          lastRunAt:
+            typeof automationSnapshot.lastRunAt === "string" ? automationSnapshot.lastRunAt : null,
+          providerChecks:
+            typeof automationSnapshot.providerChecks === "number" ? automationSnapshot.providerChecks : 0,
+          failures: typeof automationSnapshot.failures === "number" ? automationSnapshot.failures : 0,
+          healthyCount:
+            typeof automationSnapshot.healthyCount === "number" ? automationSnapshot.healthyCount : 0,
+          reconnectRequiredCount:
+            typeof automationSnapshot.reconnectRequiredCount === "number"
+              ? automationSnapshot.reconnectRequiredCount
+              : 0,
+          lowConfidenceCount:
+            typeof automationSnapshot.lowConfidenceCount === "number" ? automationSnapshot.lowConfidenceCount : 0,
+          providersNeedingAttention: Array.isArray(automationSnapshot.providersNeedingAttention)
+            ? automationSnapshot.providersNeedingAttention
+                .filter(
+                  (item): item is Record<string, unknown> =>
+                    typeof item === "object" && item !== null && !Array.isArray(item)
+                )
+                .map((item) => ({
+                  id: typeof item.id === "string" ? item.id : "",
+                  label: typeof item.label === "string" ? item.label : "Connected tool",
+                  healthStatus: typeof item.healthStatus === "string" ? item.healthStatus : "UNKNOWN",
+                  connectionState: typeof item.connectionState === "string" ? item.connectionState : "UNKNOWN",
+                  confidenceScore:
+                    typeof item.confidenceScore === "number" ? item.confidenceScore : null
+                }))
+            : []
+        }
+      : null
   };
 }
 
@@ -572,12 +645,18 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
 
   const provider = mapProvider(providerRecord);
   const templateSlug =
-    (typeof providerRecord.metadata === "object" &&
-    providerRecord.metadata &&
-    !Array.isArray(providerRecord.metadata) &&
-    "providerTemplateSlug" in providerRecord.metadata &&
-    typeof providerRecord.metadata.providerTemplateSlug === "string")
-      ? providerRecord.metadata.providerTemplateSlug
+    (typeof providerRecord.normalizedMetadata === "object" &&
+    providerRecord.normalizedMetadata &&
+    !Array.isArray(providerRecord.normalizedMetadata) &&
+    "providerSlug" in providerRecord.normalizedMetadata &&
+    typeof providerRecord.normalizedMetadata.providerSlug === "string")
+      ? providerRecord.normalizedMetadata.providerSlug
+      : (typeof providerRecord.metadata === "object" &&
+        providerRecord.metadata &&
+        !Array.isArray(providerRecord.metadata) &&
+        "providerTemplateSlug" in providerRecord.metadata &&
+        typeof providerRecord.metadata.providerTemplateSlug === "string")
+        ? providerRecord.metadata.providerTemplateSlug
       : null;
 
   return {
@@ -591,6 +670,8 @@ export async function getWalletProviderDetailData(walletId: string, providerId: 
         ...provider,
         templateSlug,
         websiteId: providerRecord.websiteId ?? null,
+        connectionState: humanizeEnum(providerRecord.connectionState),
+        confidenceScore: providerRecord.connectionConfidence ?? null,
         credentials: providerRecord.secrets.map((secret) => ({
           id: secret.id,
           type: humanizeEnum(secret.secretType),
@@ -1157,6 +1238,21 @@ export async function getWalletSetupData(walletId: string, userId: string) {
           id: true,
           name: true
         }
+      },
+      providers: {
+        orderBy: {
+          createdAt: "asc"
+        },
+        select: {
+          id: true,
+          providerName: true,
+          category: true,
+          connectionState: true,
+          healthStatus: true,
+          connectionConfidence: true,
+          reconnectRequired: true,
+          metadata: true
+        }
       }
     }
   });
@@ -1175,6 +1271,7 @@ export async function getWalletSetupData(walletId: string, userId: string) {
   const settingMap = await getWalletSettingMap(wallet.id, userId);
   const templateSlug = typeof settingMap.walletTemplate === "string" ? settingMap.walletTemplate : null;
   const walletTemplate = getWalletTemplateBySlug(templateSlug);
+  const setupProfile = parseStoredSetupProfile(settingMap.setupProfile);
 
   return {
     walletContext: {
@@ -1184,7 +1281,21 @@ export async function getWalletSetupData(walletId: string, userId: string) {
       role: role.toLowerCase()
     },
     websites: wallet.websites,
-    walletTemplate
+    providers: wallet.providers.map((provider) => ({
+      id: provider.id,
+      providerName: provider.providerName,
+      category: provider.category,
+      connectionState: provider.connectionState,
+      healthStatus: provider.healthStatus,
+      connectionConfidence: provider.connectionConfidence,
+      reconnectRequired: provider.reconnectRequired,
+      metadata:
+        provider.metadata && typeof provider.metadata === "object" && !Array.isArray(provider.metadata)
+          ? (provider.metadata as Record<string, unknown>)
+          : {}
+    })),
+    walletTemplate,
+    setupProfile
   };
 }
 
@@ -1239,7 +1350,7 @@ export async function getWalletSettingsData(walletId: string, userId: string) {
   };
 }
 
-export async function getWalletFormData(walletId: string, userId: string) {
+export async function getWalletFormData(walletId: string, userId: string, providerId?: string) {
   const wallet = await prisma.wallet.findFirst({
     where: walletAccessWhere(walletId, userId),
     include: {
@@ -1260,7 +1371,15 @@ export async function getWalletFormData(walletId: string, userId: string) {
           id: true,
           name: true
         }
-      }
+      },
+      providers: providerId
+        ? {
+            where: {
+              id: providerId
+            },
+            take: 1
+          }
+        : false
     }
   });
 
@@ -1275,6 +1394,14 @@ export async function getWalletFormData(walletId: string, userId: string) {
 
   ensureCapability(role, "wallet.write");
 
+  const selectedProvider = providerId ? wallet.providers[0] ?? null : null;
+  const selectedProviderMetadata =
+    selectedProvider?.normalizedMetadata &&
+    typeof selectedProvider.normalizedMetadata === "object" &&
+    !Array.isArray(selectedProvider.normalizedMetadata)
+      ? (selectedProvider.normalizedMetadata as Record<string, unknown>)
+      : {};
+
   return {
     walletContext: {
       id: wallet.id,
@@ -1282,7 +1409,31 @@ export async function getWalletFormData(walletId: string, userId: string) {
       planTier: wallet.planTier ?? "Starter",
       role: role.toLowerCase()
     },
-    websites: wallet.websites
+    websites: wallet.websites,
+    providerDraft: selectedProvider
+      ? {
+          id: selectedProvider.id,
+          providerName: selectedProvider.providerName,
+          displayLabel: selectedProvider.displayLabel,
+          category: selectedProvider.category,
+          connectionMethod: selectedProvider.connectionMethod,
+          connectedAccountLabel: selectedProvider.connectedAccountLabel,
+          externalProjectId: selectedProvider.externalProjectId,
+          externalTeamId: selectedProvider.externalTeamId,
+          dashboardUrl: selectedProvider.dashboardUrl,
+          billingUrl: selectedProvider.billingUrl,
+          editUrl: selectedProvider.editUrl,
+          supportUrl: selectedProvider.supportUrl,
+          ownerDescription: selectedProvider.ownerDescription,
+          notes: selectedProvider.notes,
+          monthlyCostEstimate: toNumber(selectedProvider.monthlyCostEstimate),
+          renewalDate: selectedProvider.renewalDate?.toISOString().slice(0, 10) ?? "",
+          websiteId: selectedProvider.websiteId,
+          connectionState: humanizeEnum(selectedProvider.connectionState),
+          confidenceScore: selectedProvider.connectionConfidence ?? null,
+          normalizedMetadata: jsonRecord(selectedProviderMetadata as Prisma.JsonValue)
+        }
+      : null
   };
 }
 
@@ -1500,6 +1651,65 @@ export async function getAdminAuditData() {
     actor: log.actorUser?.name ?? log.actorUser?.email ?? humanizeEnum(log.actorType),
     createdAt: log.createdAt.toISOString()
   }));
+}
+
+export async function getAdminProviderDiagnosticsData() {
+  const providers = await prisma.providerConnection.findMany({
+    include: {
+      wallet: {
+        select: {
+          businessName: true
+        }
+      },
+      website: {
+        select: {
+          name: true,
+          primaryDomain: true
+        }
+      }
+    },
+    orderBy: [
+      { updatedAt: "desc" }
+    ],
+    take: 80
+  });
+
+  return providers.map((provider) => {
+    const diagnostics =
+      provider.diagnostics && typeof provider.diagnostics === "object" && !Array.isArray(provider.diagnostics)
+        ? (provider.diagnostics as Record<string, unknown>)
+        : {};
+    const normalizedMetadata =
+      provider.normalizedMetadata && typeof provider.normalizedMetadata === "object" && !Array.isArray(provider.normalizedMetadata)
+        ? (provider.normalizedMetadata as Record<string, unknown>)
+        : {};
+
+    return {
+      id: provider.id,
+      walletId: provider.walletId,
+      walletName: provider.wallet.businessName,
+      websiteName: provider.website?.name ?? null,
+      primaryDomain: provider.website?.primaryDomain ?? null,
+      providerName: provider.providerName,
+      displayLabel: provider.displayLabel ?? provider.providerName,
+      adapterKey: provider.adapterKey ?? "custom",
+      connectionState: humanizeEnum(provider.connectionState),
+      status: humanizeEnum(provider.status),
+      healthStatus: humanizeEnum(provider.healthStatus),
+      syncState: humanizeEnum(provider.syncState),
+      confidenceScore: provider.connectionConfidence ?? null,
+      reconnectRequired: provider.reconnectRequired,
+      failureSummary: provider.failureSummary,
+      updatedAt: provider.updatedAt.toISOString(),
+      lastVerifiedAt: provider.lastVerifiedAt?.toISOString() ?? null,
+      lastHealthCheckAt: provider.lastHealthCheckAt?.toISOString() ?? null,
+      selectedProject:
+        typeof normalizedMetadata.projectId === "string"
+          ? normalizedMetadata.projectId
+          : provider.externalProjectId ?? null,
+      diagnostics: jsonRecord(diagnostics as Prisma.JsonValue)
+    };
+  });
 }
 
 export type UserPreferences = {

@@ -1,4 +1,4 @@
-import { Prisma, SecretStatus, SecretType } from "@prisma/client";
+import { Prisma, SecretStatus, SecretType } from "@prisma/client/index";
 
 import { prisma } from "@/lib/prisma";
 import { encryptSecret, fingerprintSecret, maskSecret } from "@/lib/security/encryption";

@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import { BillingCadence, BillingStatus, Prisma, SubscriptionProvider } from "@prisma/client";
+import { BillingCadence, BillingStatus, Prisma, SubscriptionProvider } from "@prisma/client/index";
 
 import { prisma } from "@/lib/prisma";
 import { recordAuditEvent } from "@/lib/audit";

@@ -4,8 +4,8 @@ import { NewWalletForm } from "./new-wallet-form";
 export default function NewWalletPage() {
   return (
     <AppShell
-      title="Create wallet"
-      description="Create the website ownership wallet your client will use after handoff."
+      title="Create client wallet"
+      description="Start a new wallet in your workspace and let RAEYL build the ownership rail around it."
     >
       <NewWalletForm />
     </AppShell>

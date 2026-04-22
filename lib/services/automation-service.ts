@@ -1,4 +1,4 @@
-import { AlertCategory, AlertSeverity, AlertStatus, BillingStatus, Prisma } from "@prisma/client";
+import { AlertCategory, AlertSeverity, AlertStatus, BillingStatus, Prisma } from "@prisma/client/index";
 
 import { prisma } from "@/lib/prisma";
 import { recordAuditEvent } from "@/lib/audit";
@@ -197,6 +197,77 @@ export async function runWalletAutomationSweep(walletId: string, actorUserId?: s
   const healthResults = await Promise.allSettled(providers.map((provider) => checkProviderHealth(provider.id)));
   await syncWalletOperationalAlerts(walletId);
 
+  const refreshedProviders = await prisma.providerConnection.findMany({
+    where: {
+      walletId,
+      status: {
+        not: "ARCHIVED"
+      }
+    },
+    select: {
+      id: true,
+      providerName: true,
+      displayLabel: true,
+      healthStatus: true,
+      connectionState: true,
+      connectionConfidence: true,
+      reconnectRequired: true
+    }
+  });
+
+  const snapshot = {
+    lastRunAt: new Date().toISOString(),
+    providerChecks: healthResults.length,
+    failures: healthResults.filter((result) => result.status === "rejected").length,
+    healthyCount: refreshedProviders.filter((provider) => provider.healthStatus === "HEALTHY").length,
+    reconnectRequiredCount: refreshedProviders.filter((provider) => provider.reconnectRequired).length,
+    lowConfidenceCount: refreshedProviders.filter(
+      (provider) =>
+        provider.connectionState === "AWAITING_SELECTION" ||
+        (provider.connectionConfidence !== null && provider.connectionConfidence < 70)
+    ).length,
+    providersNeedingAttention: refreshedProviders
+      .filter(
+        (provider) =>
+          provider.reconnectRequired ||
+          provider.healthStatus === "DISCONNECTED" ||
+          provider.healthStatus === "ISSUE_DETECTED" ||
+          provider.connectionState === "AWAITING_SELECTION"
+      )
+      .slice(0, 6)
+      .map((provider) => ({
+        id: provider.id,
+        label: provider.displayLabel ?? provider.providerName,
+        healthStatus: provider.healthStatus,
+        connectionState: provider.connectionState,
+        confidenceScore: provider.connectionConfidence
+      }))
+  };
+
+  const existingSnapshot = await prisma.setting.findFirst({
+    where: {
+      scope: "WALLET",
+      walletId,
+      key: "providerAutomationSnapshot"
+    }
+  });
+
+  if (existingSnapshot) {
+    await prisma.setting.update({
+      where: { id: existingSnapshot.id },
+      data: { value: snapshot as Prisma.InputJsonValue }
+    });
+  } else {
+    await prisma.setting.create({
+      data: {
+        scope: "WALLET",
+        walletId,
+        key: "providerAutomationSnapshot",
+        value: snapshot as Prisma.InputJsonValue
+      }
+    });
+  }
+
   if (actorUserId) {
     await recordAuditEvent({
       actorUserId,
@@ -220,7 +291,8 @@ export async function runWalletAutomationSweep(walletId: string, actorUserId?: s
 
   return {
     providerChecks: healthResults.length,
-    failures: healthResults.filter((result) => result.status === "rejected").length
+    failures: healthResults.filter((result) => result.status === "rejected").length,
+    snapshot
   };
 }
 

@@ -23,7 +23,10 @@ export default async function ProvidersPage({
   const { walletId } = await params;
   const { health } = await searchParams;
   const session = await requireSession();
-  const { walletContext, providers, templateSlug } = await getWalletProvidersData(walletId, session.user.id);
+  const { walletContext, providers, templateSlug, automationSnapshot } = await getWalletProvidersData(
+    walletId,
+    session.user.id
+  );
   const canManageProviders = walletContext.role ? hasCapability(walletContext.role, "provider.write") : false;
   const intelligence = getWalletIntelligence({
     role: walletContext.role as WalletRole,
@@ -80,6 +83,18 @@ export default async function ProvidersPage({
                 </div>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="flex items-center gap-3 py-4">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.16em] text-muted">Autopilot queue</div>
+                  <div className="text-2xl font-semibold">
+                    {automationSnapshot
+                      ? automationSnapshot.reconnectRequiredCount + automationSnapshot.lowConfidenceCount
+                      : 0}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
           {canManageProviders ? (
             <div className="flex flex-wrap gap-3">
@@ -111,6 +126,47 @@ export default async function ProvidersPage({
                   </Badge>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {automationSnapshot ? (
+          <Card>
+            <CardContent className="space-y-3 py-5">
+              <div className="flex items-center gap-2">
+                <Badge variant="accent">Autopilot</Badge>
+                <div className="text-sm font-medium">Provider intelligence summary</div>
+              </div>
+              <p className="text-sm text-muted">
+                Last run {automationSnapshot.lastRunAt ? `on ${new Date(automationSnapshot.lastRunAt).toLocaleString()}` : "not recorded"}.
+                {" "}
+                RAEYL checked {automationSnapshot.providerChecks} connection{automationSnapshot.providerChecks === 1 ? "" : "s"},
+                with {automationSnapshot.failures} failure{automationSnapshot.failures === 1 ? "" : "s"}.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="success">{automationSnapshot.healthyCount} healthy</Badge>
+                <Badge variant="warning">{automationSnapshot.lowConfidenceCount} low-confidence</Badge>
+                <Badge variant="danger">{automationSnapshot.reconnectRequiredCount} reconnect needed</Badge>
+              </div>
+              {automationSnapshot.providersNeedingAttention.length ? (
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {automationSnapshot.providersNeedingAttention.map((provider) => (
+                    <Link
+                      key={provider.id}
+                      href={`/app/wallets/${walletContext.id}/providers/${provider.id}`}
+                      className="rounded-md border border-white/10 p-3 text-sm transition-colors hover:bg-white/5"
+                    >
+                      <div className="font-medium text-foreground">{provider.label}</div>
+                      <div className="mt-1 text-xs text-muted">
+                        {provider.connectionState.replaceAll("_", " ").toLowerCase()} · {provider.healthStatus.replaceAll("_", " ").toLowerCase()}
+                        {typeof provider.confidenceScore === "number" ? ` · ${provider.confidenceScore}% confidence` : ""}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted">No providers are currently queued for repair or confirmation.</p>
+              )}
             </CardContent>
           </Card>
         ) : null}

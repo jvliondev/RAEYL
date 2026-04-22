@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { deleteEditRoute } from "@/lib/actions/wallets";
+import { createSuggestedEditRoute, deleteEditRoute } from "@/lib/actions/wallets";
 import { AppShell } from "@/components/app/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,14 @@ import { requireSession } from "@/lib/auth/access";
 import { getWalletWebsiteDetailData } from "@/lib/data/wallets";
 
 export default async function WebsiteDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ walletId: string; websiteId: string }>;
+  searchParams: Promise<{ route?: string }>;
 }) {
   const { walletId, websiteId } = await params;
+  const { route } = await searchParams;
   const session = await requireSession();
   const { walletContext, website, providers } = await getWalletWebsiteDetailData(
     walletId,
@@ -24,6 +27,14 @@ export default async function WebsiteDetailPage({
 
   const primaryRoute = website.editRoutes.find((r) => r.isPrimary);
   const canWrite = ["developer", "wallet_owner", "platform_admin"].includes(walletContext.role);
+  const suggestedRoutes = providers.flatMap((provider) =>
+    (provider.suggestedRoutes ?? []).map((suggestion, suggestionIndex) => ({
+      ...suggestion,
+      providerId: provider.id,
+      providerLabel: provider.label || provider.name,
+      suggestionIndex
+    }))
+  );
 
   return (
     <AppShell
@@ -33,6 +44,20 @@ export default async function WebsiteDetailPage({
     >
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-6">
+          {route === "created" ? (
+            <Card>
+              <CardContent className="py-4 text-sm text-success">
+                Suggested owner action created. The website wallet now has a new editing path.
+              </CardContent>
+            </Card>
+          ) : null}
+          {route === "exists" ? (
+            <Card>
+              <CardContent className="py-4 text-sm text-muted">
+                That suggested action already exists for this website.
+              </CardContent>
+            </Card>
+          ) : null}
           <Card>
             <CardHeader>
               <div>
@@ -138,6 +163,58 @@ export default async function WebsiteDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {suggestedRoutes.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Suggested owner actions</CardTitle>
+                  <CardDescription>
+                    RAEYL inferred these editing paths from your connected tools. Turn them into real wallet actions in one click.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {suggestedRoutes.map((suggestion) => (
+                  <div
+                    key={`${suggestion.providerId}-${suggestion.suggestionIndex}-${suggestion.label}`}
+                    className="rounded-md border border-white/10 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{suggestion.label}</span>
+                          {suggestion.recommendedPrimary ? <Badge variant="accent">Recommended primary</Badge> : null}
+                          <Badge variant="neutral">{suggestion.confidenceScore}% confidence</Badge>
+                        </div>
+                        <p className="text-sm text-muted">{suggestion.purpose}</p>
+                        <div className="text-xs text-muted">From {suggestion.providerLabel}</div>
+                      </div>
+                      {canWrite ? (
+                        <div className="flex flex-col gap-2">
+                          <form action={createSuggestedEditRoute}>
+                            <input type="hidden" name="walletId" value={walletId} />
+                            <input type="hidden" name="providerId" value={suggestion.providerId} />
+                            <input type="hidden" name="suggestionIndex" value={suggestion.suggestionIndex} />
+                            <SubmitButton variant="secondary" pendingLabel="Creating...">
+                              Create action
+                            </SubmitButton>
+                          </form>
+                          <Button asChild variant="ghost" size="sm">
+                            <Link
+                              href={`/app/wallets/${walletId}/websites/${websiteId}/routes/new?label=${encodeURIComponent(suggestion.label)}&destinationUrl=${encodeURIComponent(suggestion.destinationUrl)}&description=${encodeURIComponent(suggestion.purpose)}&providerId=${encodeURIComponent(suggestion.providerId)}&contentKey=${encodeURIComponent(suggestion.destinationType)}&isPrimary=${suggestion.recommendedPrimary ? "true" : "false"}`}
+                            >
+                              Customize
+                            </Link>
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
         </div>
 
         <div className="space-y-6">

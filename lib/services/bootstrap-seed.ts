@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 import bcrypt from "bcryptjs";
-import { Prisma, type PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client/index";
 
 type BootstrapSummary = {
   users: number;

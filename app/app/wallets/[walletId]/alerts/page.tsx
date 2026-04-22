@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app/app-shell";
 import { EmptyState } from "@/components/app/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireSession } from "@/lib/auth/access";
 import { getWalletAlertsData } from "@/lib/data/wallets";
@@ -47,6 +48,16 @@ export default async function AlertsPage({
                   </Badge>
                 </div>
                 <p className="text-sm text-muted">{alert.message}</p>
+                <div className="mt-3 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-muted">
+                  {alert.recommendation}
+                </div>
+                {alert.providerId ? (
+                  <div className="mt-3">
+                    <Button asChild size="sm" variant="secondary">
+                      <a href={`/app/wallets/${walletId}/providers/${alert.providerId}`}>Review this tool</a>
+                    </Button>
+                  </div>
+                ) : null}
                 <p className="mt-2 text-xs text-muted">Created {formatDate(alert.createdAt)}</p>
               </div>
             ))

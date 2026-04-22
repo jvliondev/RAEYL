@@ -1,5 +1,5 @@
 import type { Session } from "next-auth";
-import type { WalletRole } from "@prisma/client";
+import type { WalletRole } from "@prisma/client/index";
 
 import { auth } from "@/lib/auth/config";
 import { prisma } from "@/lib/prisma";

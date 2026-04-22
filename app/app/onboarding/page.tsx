@@ -17,8 +17,8 @@ export default function OnboardingPage() {
 
   return (
     <AppShell
-      title="Developer onboarding"
-      description="Set up the ownership layer your client will actually rely on after launch."
+      title="Workspace onboarding"
+      description="Set up the workspace and wallet flow your clients will actually rely on after launch."
     >
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <Card>
@@ -39,7 +39,7 @@ export default function OnboardingPage() {
               </div>
             ))}
             <Link href="/app/wallets/new">
-              <Button className="mt-2">Start first wallet</Button>
+              <Button className="mt-2">Create first wallet</Button>
             </Link>
           </CardContent>
         </Card>
@@ -50,16 +50,16 @@ export default function OnboardingPage() {
               <div>
                 <CardTitle>Website templates</CardTitle>
                 <CardDescription>
-                  Choose the website type first and RAEYL will guide the rest of the setup more intelligently.
+                  Choose the website type first and RAEYL will guide the rest of the wallet setup more intelligently.
                 </CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted">
               {WALLET_TEMPLATES.slice(0, 4).map((template) => (
                 <div key={template.slug} className="rounded-md border border-white/10 p-3">
-                  <div className="font-medium text-foreground">{template.label}</div>
-                  <p className="mt-1">{template.description}</p>
-                </div>
+                <div className="font-medium text-foreground">{template.label}</div>
+                <p className="mt-1">{template.description}</p>
+              </div>
               ))}
             </CardContent>
           </Card>
@@ -69,7 +69,7 @@ export default function OnboardingPage() {
               <div>
                 <CardTitle>Partner visibility</CardTitle>
                 <CardDescription>
-                  Referral attribution and post-handoff collaborator mode stay tied to the wallet from the start.
+                  Referral attribution and post-handoff collaborator mode stay tied to the workspace from the start.
                 </CardDescription>
               </div>
             </CardHeader>

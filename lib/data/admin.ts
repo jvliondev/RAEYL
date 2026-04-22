@@ -1,4 +1,4 @@
-import { MembershipStatus, WalletStatus, BillingStatus, ReferralStatus } from "@prisma/client";
+import { MembershipStatus, WalletStatus, BillingStatus, ReferralStatus } from "@prisma/client/index";
 
 import { prisma } from "@/lib/prisma";
 

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { refreshProviderHealth } from "@/lib/actions/wallets";
+import { createSuggestedEditRoute, refreshProviderHealth } from "@/lib/actions/wallets";
 import { requireSession } from "@/lib/auth/access";
 import { hasCapability } from "@/lib/auth/permissions";
 import { getWalletProviderDetailData } from "@/lib/data/wallets";
+import { getProviderOAuthReadiness } from "@/lib/providers/oauth";
+import { getProviderRepairPlan } from "@/lib/providers/repair";
 import { detectCMSProvider } from "@/lib/services/cms-service";
 import { getProviderFrameworkProfile } from "@/lib/services/provider-framework";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -19,10 +21,10 @@ export default async function ProviderDetailPage({
   searchParams
 }: {
   params: Promise<{ walletId: string; providerId: string }>;
-  searchParams: Promise<{ health?: string }>;
+  searchParams: Promise<{ health?: string; connected?: string; reconnected?: string }>;
 }) {
   const { walletId, providerId } = await params;
-  const { health } = await searchParams;
+  const { health, connected, reconnected } = await searchParams;
   const session = await requireSession();
   const { walletContext, provider, recentBilling } = await getWalletProviderDetailData(
     walletId,
@@ -36,8 +38,24 @@ export default async function ProviderDetailPage({
     slug: provider.templateSlug ?? undefined,
     providerName: provider.name
   });
-  const needsProjectSelection =
-    provider.templateSlug === "vercel" && provider.metadata.selectedProjectName === "not selected";
+  const oauthReadiness = getProviderOAuthReadiness(
+    provider.templateSlug ?? provider.name,
+    process.env.NEXTAUTH_URL ?? process.env.AUTH_URL ?? process.env.APP_URL ?? null
+  );
+  const needsProjectSelection = provider.connectionState === "Awaiting Selection";
+  const repairPlan = getProviderRepairPlan({
+    providerName: provider.name,
+    templateSlug: provider.templateSlug,
+    connectionState: provider.connectionState,
+    health: provider.health,
+    confidenceScore: provider.confidenceScore,
+    hasDashboardUrl: Boolean(provider.dashboardUrl),
+    hasBillingUrl: Boolean(provider.billingUrl),
+    hasEditUrl: Boolean(provider.editUrl),
+    hasProjectId: provider.metadata.projectId !== undefined || provider.metadata.selectedProjectRef !== undefined,
+    hasTeamId: provider.metadata.teamId !== undefined,
+    syncState: provider.syncState
+  });
 
   return (
     <AppShell
@@ -60,6 +78,16 @@ export default async function ProviderDetailPage({
           {health === "checked" ? (
             <div className="rounded-xl border border-success/25 bg-success/[0.06] px-5 py-4 text-sm text-success">
               Live health check completed. RAEYL refreshed this tool with the latest data it could verify.
+            </div>
+          ) : null}
+          {connected === "1" ? (
+            <div className="rounded-xl border border-success/25 bg-success/[0.06] px-5 py-4 text-sm text-success">
+              Connected. RAEYL verified what it could, matched the account to this wallet, and saved the live connection state.
+            </div>
+          ) : null}
+          {reconnected === "1" ? (
+            <div className="rounded-xl border border-success/25 bg-success/[0.06] px-5 py-4 text-sm text-success">
+              Connection refreshed. RAEYL updated the saved metadata, confidence, and health signals for this tool.
             </div>
           ) : null}
           {needsProjectSelection ? (
@@ -126,7 +154,7 @@ export default async function ProviderDetailPage({
               {canManage ? (
                 <Button asChild variant="ghost">
                   <Link
-                    href={`/app/wallets/${walletId}/providers/new?template=${provider.templateSlug ?? "custom"}${provider.websiteId ? `&websiteId=${provider.websiteId}` : ""}`}
+                    href={`/app/wallets/${walletId}/providers/new?template=${provider.templateSlug ?? "custom"}&providerId=${providerId}${provider.websiteId ? `&websiteId=${provider.websiteId}` : ""}`}
                   >
                     Reconnect this tool
                   </Link>
@@ -169,6 +197,14 @@ export default async function ProviderDetailPage({
             <CardContent className="space-y-3 text-sm text-muted">
               <div>
                 <span className="text-foreground">Method:</span> {provider.connectionMethod ?? "Not recorded"}
+              </div>
+              <div>
+                <span className="text-foreground">Connection state:</span>{" "}
+                {provider.connectionState ?? "Not recorded"}
+              </div>
+              <div>
+                <span className="text-foreground">Connection confidence:</span>{" "}
+                {provider.confidenceScore ? `${provider.confidenceScore}%` : "Not scored yet"}
               </div>
               <div>
                 <span className="text-foreground">Sync state:</span> {provider.syncState ?? "Unknown"}
@@ -265,6 +301,40 @@ export default async function ProviderDetailPage({
             </CardContent>
           </Card>
 
+          {oauthReadiness.supported ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>OAuth readiness</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted">
+                <div>
+                  Status:{" "}
+                  <span className="text-foreground">
+                    {oauthReadiness.enabled ? "Ready for live authorization" : "Needs provider app credentials"}
+                  </span>
+                </div>
+                {oauthReadiness.missingKeys.length ? (
+                  <div className="rounded-md border border-warning/20 bg-warning/5 p-4">
+                    <div className="font-medium text-foreground">Missing environment keys</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {oauthReadiness.missingKeys.map((key) => (
+                        <span key={key} className="rounded-md border border-white/10 px-2 py-1 text-xs text-foreground">
+                          {key}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {oauthReadiness.callbackUrl ? (
+                  <div className="rounded-md border border-white/10 bg-white/[0.03] p-4">
+                    <div className="font-medium text-foreground">Registered callback URL</div>
+                    <div className="mt-2 break-all text-xs text-foreground">{oauthReadiness.callbackUrl}</div>
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardTitle>Technical metadata</CardTitle>
@@ -282,6 +352,95 @@ export default async function ProviderDetailPage({
               )}
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Repair and reconnect</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted">
+              <div className="font-medium text-foreground">{repairPlan.title}</div>
+              <p>{repairPlan.summary}</p>
+              <div className="space-y-2">
+                {repairPlan.nextSteps.map((step) => (
+                  <div key={step} className="rounded-md border border-white/10 px-3 py-2">
+                    {step}
+                  </div>
+                ))}
+              </div>
+              {canManage ? (
+                <Button asChild variant="secondary">
+                  <Link
+                    href={`/app/wallets/${walletId}/providers/new?template=${provider.templateSlug ?? "custom"}&providerId=${providerId}${provider.websiteId ? `&websiteId=${provider.websiteId}` : ""}&returnTo=${encodeURIComponent(`/app/wallets/${walletId}/providers/${providerId}`)}`}
+                  >
+                    Repair this connection
+                  </Link>
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {provider.diagnostics && Object.keys(provider.diagnostics).length ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Connection diagnostics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted">
+                {Object.entries(provider.diagnostics).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between gap-4">
+                    <span>{key}</span>
+                    <span className="text-foreground">{String(value)}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {provider.suggestedRoutes?.length ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Suggested owner actions</CardTitle>
+                <CardDescription>
+                  RAEYL inferred these editing or management paths from the connected provider.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {provider.suggestedRoutes.map((route, index) => (
+                  <div key={`${route.label}-${index}`} className="rounded-md border border-white/10 p-4 text-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{route.label}</span>
+                          {route.recommendedPrimary ? <Badge variant="accent">Recommended primary</Badge> : null}
+                          <Badge variant="neutral">{route.confidenceScore}% confidence</Badge>
+                        </div>
+                        <p className="text-muted">{route.purpose}</p>
+                        <div className="text-xs text-muted">{route.destinationUrl}</div>
+                      </div>
+                      {canManage && provider.websiteId ? (
+                        <form action={createSuggestedEditRoute}>
+                          <input type="hidden" name="walletId" value={walletId} />
+                          <input type="hidden" name="providerId" value={providerId} />
+                          <input type="hidden" name="suggestionIndex" value={index} />
+                          <Button type="submit" variant="secondary">
+                            Create action
+                          </Button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+                {provider.websiteId ? (
+                  <p className="text-xs text-muted">
+                    Creating one of these will turn it into a real owner-facing path inside the wallet.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted">
+                    Link this provider to a website first so RAEYL can turn these suggestions into owner actions.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
 
           {canManage ? (
             <Card className="border-destructive/20">
